@@ -47,3 +47,5 @@
 *.pdf
 todo.md
 nanotekspice
+*.nts
+*.txt
