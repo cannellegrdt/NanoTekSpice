@@ -8,11 +8,26 @@
 #ifndef NTS_ERRORS_HPP_
 #define NTS_ERRORS_HPP_
 
+#include <stdexcept>
+#include <string>
+
 namespace nts {
 
-    class NtsException;
+
+    class NtsException : public std::runtime_error {
+    public:
+        explicit NtsException(const std::string &msg);
+        ~NtsException() override = default;
+    };
+
+    class ParseError : public NtsException {
+    public:
+        explicit ParseError(const std::string &msg);
+        ~ParseError() override = default;
+    };
 
 }
 
 #endif /* !NTS_ERRORS_HPP_ */
+
 

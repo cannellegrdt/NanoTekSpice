@@ -1,0 +1,276 @@
+classDiagram
+    direction TB
+
+    %% ==========================================
+    %% 1. CORE TYPES & LOGIC HELPER
+    %% ==========================================
+    namespace nts {
+        class Tristate {
+            <<enum>>
+            Undefined = -1
+            False = 0
+            True = 1
+        }
+
+        class TristateLogic {
+            <<static helper>>
+            +andGate(Tristate a, Tristate b)$ Tristate
+            +orGate(Tristate a, Tristate b)$ Tristate
+            +xorGate(Tristate a, Tristate b)$ Tristate
+            +notGate(Tristate a)$ Tristate
+            +nandGate(Tristate a, Tristate b)$ Tristate
+            +norGate(Tristate a, Tristate b)$ Tristate
+            +xnorGate(Tristate a, Tristate b)$ Tristate
+        }
+
+        class IComponent {
+            <<interface>>
+            +~IComponent()*
+            +simulate(size_t tick)* void
+            +compute(size_t pin)* Tristate
+            +setLink(size_t pin, IComponent &other, size_t otherPin)* void
+        }
+    }
+
+    %% ==========================================
+    %% 2. PARSING SYSTEM (Recursive Descent / LL)
+    %% ==========================================
+    class TokenType {
+        <<enum>>
+        SECTION_CHIPSETS
+        SECTION_LINKS
+        STRING
+        COLON
+        NEWLINE
+        eof
+    }
+
+    class Token {
+        +type : TokenType
+        +value : string
+        +line : size_t
+        +col : size_t
+    }
+
+    class Lexer {
+        -_content : string
+        -_cursor : size_t
+        +peek() Token
+        +advance() Token
+        -skipWhitespace()
+        -skipComment()
+    }
+
+    class Parser {
+        -_lexer : Lexer
+        -_currentToken : Token
+        -_factory : Factory
+        -_circuit : Circuit*
+        
+        +parseFile(string file, Circuit &circuit)
+        -eat(TokenType type)
+        -parseChipsetsSection()
+        -parseLinksSection()
+        -parseComponent()
+        -parseLink()
+    }
+
+    Parser --> Lexer : possède
+    Lexer --> Token : produit
+    Lexer --> TokenType : utilise
+
+    %% ==========================================
+    %% 3. SIMULATION ENGINE & UI
+    %% ==========================================
+    class Factory {
+        +createComponent(string type, string name) unique_ptr~IComponent~
+    }
+
+    class Circuit {
+        -_componentsByName : map~string, IComponent*~
+        -_allComponents : vector~unique_ptr~IComponent~~
+        -_inputs : vector~Input*~
+        -_outputs : vector~Output*~
+        -_tick : size_t
+
+        +addComponent(unique_ptr~IComponent~ comp)
+        +simulate() void
+        +display() void
+        +setInputValue(string name, string value) void
+    }
+
+    class Shell {
+        -_circuit : Circuit
+        -_isRunning : bool
+        +run(int ac, char **av) void
+        -loop() void
+        -processCommand(string line) void
+    }
+
+    Shell --> Parser : utilise pour init
+    Shell --> Circuit : pilote
+    Parser --> Factory : utilise
+    Factory ..> IComponent : fabrique
+    Circuit *-- IComponent : possède
+
+    %% ==========================================
+    %% 4. COMPONENT ABSTRACTION
+    %% ==========================================
+    class AComponent {
+        <<abstract>>
+        #_name : string
+        #_tick : size_t
+        #_lastComputedTick : size_t  %% Anti-recursion loop
+        #_links : map~size_t, pair~IComponent*, size_t~~
+        #_pins : map~size_t, Tristate~ 
+        
+        +getName() string
+        +compute(size_t pin) Tristate
+        +setLink(size_t pin, IComponent &other, size_t otherPin) void
+        #getLink(size_t pin) Tristate
+    }
+
+    IComponent <|-- AComponent
+    AComponent ..> TristateLogic : utilise
+
+    %% ==========================================
+    %% 5. SPECIAL COMPONENTS
+    %% ==========================================
+    class Input { 
+        -_nextValue : Tristate
+        +setValue(Tristate) 
+    }
+    class Output { }
+    class Clock { 
+        -_nextValue : Tristate
+        +simulate(tick)
+    }
+    class TrueComp { }
+    class FalseComp { }
+
+    AComponent <|-- Input
+    Input <|-- Clock
+    AComponent <|-- Output
+    AComponent <|-- TrueComp
+    AComponent <|-- FalseComp
+
+    %% ==========================================
+    %% 6. ELEMENTARY GATES
+    %% ==========================================
+    class AndGate { }
+    class OrGate { }
+    class XorGate { }
+    class NotGate { }
+    
+    AComponent <|-- AndGate
+    AComponent <|-- OrGate
+    AComponent <|-- XorGate
+    AComponent <|-- NotGate
+
+    %% ==========================================
+    %% 7. GATE CHIPSETS (Aggregates)
+    %% ==========================================
+    class AGateComponent {
+        <<abstract>>
+        #_gates : vector~unique_ptr~IComponent~~
+        #mapPinToGate(pin) pair~IComponent*, pin~
+    }
+
+    class C4001 { %% Quad NOR 
+    }
+    class C4011 { %% Quad NAND
+    }
+    class C4030 { %% Quad XOR
+    }
+    class C4069 { %% Hex NOT
+    }
+    class C4071 { %% Quad OR
+    }
+    class C4081 { %% Quad AND
+    }
+
+    AComponent <|-- AGateComponent
+    AGateComponent <|-- C4001
+    AGateComponent <|-- C4011
+    AGateComponent <|-- C4030
+    AGateComponent <|-- C4069
+    AGateComponent <|-- C4071
+    AGateComponent <|-- C4081
+
+    %% ==========================================
+    %% 8. ADVANCED COMPONENTS
+    %% ==========================================
+    
+    %% --- Arithmetic ---
+    class C4008 { %% 4-bit Adder
+        -_carryOut : Tristate
+        +compute(pin)
+    }
+
+    %% --- Sequential (Stateful) ---
+    class C4013 { %% Dual D Flip-Flop
+        -_q1 : Tristate
+        -_q1_next : Tristate
+        -_q2 : Tristate
+        -_q2_next : Tristate
+        +simulate(tick)
+    }
+    
+    class C4017 { %% Johnson Decade
+        -_counter : int
+        -_counter_next : int
+        +simulate(tick)
+    }
+
+    class C4040 { %% 12-stage Binary Counter
+        -_counter : int
+        -_counter_next : int
+        +simulate(tick)
+    }
+
+    class C4094 { %% 8-stage Shift Register
+        -_registers : vector~Tristate~
+        -_registers_next : vector~Tristate~
+        +simulate(tick)
+    }
+
+    %% --- Logic & Selection ---
+    class C4512 { %% 8-channel Data Selector
+        +compute(pin)
+    }
+
+    class C4514 { %% 4-bit Latch / 4-to-16 Decoder
+        -_latchedAddress : int
+        -_nextAddress : int
+        -_inhibit : bool
+        +simulate(tick)
+    }
+
+    %% --- Memory & IO ---
+    class C4801 { %% RAM (Random Access Memory)
+        -_memory : vector~uint8_t~
+        -_nextMemory : map~size_t, uint8_t~
+        +simulate(tick)
+    }
+
+    class C2716 { %% ROM (Read Only Memory)
+        -_data : vector~uint8_t~
+        +loadFromFile(string path)
+        +compute(pin)
+    }
+
+    class Logger {
+        -_fileStream : ofstream
+        +simulate(tick)
+    }
+
+    AComponent <|-- C4008
+    AComponent <|-- C4013
+    AComponent <|-- C4017
+    AComponent <|-- C4040
+    AComponent <|-- C4094
+    AComponent <|-- C4512
+    AComponent <|-- C4514
+    AComponent <|-- C4801
+    AComponent <|-- C2716
+    AComponent <|-- Logger
