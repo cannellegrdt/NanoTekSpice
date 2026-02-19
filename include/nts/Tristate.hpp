@@ -10,9 +10,12 @@
 
 namespace nts {
 
-    enum Tristate;
+    enum Tristate {
+        Undefined = -1,
+        False = 0,
+        True = 1
+    };
 
 }
 
 #endif /* !NTS_TRISTATE_HPP_ */
-

@@ -8,11 +8,36 @@
 #ifndef NTS_SHELL_HPP_
 #define NTS_SHELL_HPP_
 
+#include <string>
+
 namespace nts {
 
-    class Shell;
+    class Circuit;
+
+    class Shell {
+    public:
+        explicit Shell(Circuit &circuit);
+        ~Shell() = default;
+
+        Shell(const Shell &) = delete;
+        Shell &operator=(const Shell &) = delete;
+
+        void run();
+
+    private:
+        Circuit &_circuit;
+        bool _running = true;
+
+        void handleCommand(const std::string &line);
+        void cmdDisplay();
+        void cmdSimulate();
+        void cmdLoop();
+        void cmdSetInput(const std::string &line);
+
+        static volatile bool _loopInterrupted;
+        static void signalHandler(int signum);
+    };
 
 }
 
 #endif /* !NTS_SHELL_HPP_ */
-

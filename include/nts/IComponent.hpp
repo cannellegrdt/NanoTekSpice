@@ -10,9 +10,9 @@
 
 #include <cstddef>
 
-namespace nts {
+#include "nts/Tristate.hpp"
 
-    enum Tristate;
+namespace nts {
 
     class IComponent {
     public:
@@ -25,4 +25,3 @@ namespace nts {
 }
 
 #endif /* !NTS_ICOMPONENT_HPP_ */
-
