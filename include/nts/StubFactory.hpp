@@ -15,8 +15,7 @@ namespace nts {
 
     class StubFactory : public IComponentFactory {
     public:
-        std::unique_ptr<IComponent> createComponent(
-            const std::string &type) const override;
+        std::unique_ptr<IComponent> createComponent(const std::string &type) const override;
     };
 
 }
