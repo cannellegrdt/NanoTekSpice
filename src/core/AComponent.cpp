@@ -10,7 +10,7 @@
 
 namespace nts {
 
-std::string AComponent::getName() const {
+const std::string &AComponent::getName() const {
     return _name;
 }
 

@@ -29,6 +29,7 @@ re:	fclean all
 
 unit_tests:	fclean
 	$(CC) -o unit_tests $(filter-out src/main.cpp, $(SRC)) tests/unit_tests.cpp $(CXXFLAGS) -lcriterion --coverage
+	./unit_tests
 
 functional_tests:	all
 	./tests/functional_tests.sh
@@ -41,4 +42,10 @@ coverage:	tests_run
 	gcovr --exclude tests/
 	gcovr --exclude tests/ --branches
 
-.PHONY: all clean fclean re unit_tests functional_tests tests_run coverage
+lint:
+	cppcheck --enable=warning,performance,portability --error-exitcode=1 -I include/ src/
+
+memcheck:	unit_tests
+	valgrind --leak-check=full --soname-synonyms=somalloc=none ./unit_tests
+
+.PHONY: all clean fclean re unit_tests functional_tests tests_run coverage lint memcheck

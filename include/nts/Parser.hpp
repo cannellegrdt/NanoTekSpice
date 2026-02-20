@@ -39,7 +39,7 @@ private:
   mutable Token _currentToken;
 
   void advance() const;
-  Token peek() const;
+  const Token &peek() const;
   Token eat(TokenType expectedType) const;
 
   void parseChipsets(Circuit &circuit) const;
