@@ -20,7 +20,6 @@ int main(int argc, char **argv)
                   << " <file.nts>" << std::endl;
         return 84;
     }
-
     try {
         nts::StubFactory factory;
         nts::Parser parser(factory);
