@@ -52,3 +52,4 @@ nanotekspice
 *.gcda
 *.gcno
 unit_tests
+log.bin
