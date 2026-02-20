@@ -3,13 +3,45 @@ name: nanotekspice CI
 on:
   push:
     branches: ["*"]
+  pull_request:
+    branches: ["*"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Make
+        
+      - name: Build project
         run: make
-      - name: Make unit_tests
+
+  unit_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build unit tests
         run: make unit_tests
+      - name: Run unit tests
+        run: ./unit_tests
+  
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cppcheck valgrind
+      - name: Linter (cppcheck)
+        run: cppcheck --enable=warning,performance,portability --error-exitcode=1 -I include/ src/
+  
+  memory_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cppcheck valgrind
+      - name: Build unit tests
+        run: make unit_tests
+      - name: Run unit tests
+        run: ./unit_tests
+      - name: Check memory leaks (Valgrind)
+        run: valgrind --leak-check=full --error-exitcode=1 ./unit_tests

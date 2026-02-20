@@ -27,7 +27,7 @@ void Parser::advance() const {
   }
 }
 
-Token Parser::peek() const { return _currentToken; }
+const Token &Parser::peek() const { return _currentToken; }
 
 Token Parser::eat(TokenType expectedType) const {
   if (_currentToken.type != expectedType) {
