@@ -14,6 +14,8 @@
 #include "nts/Circuit.hpp"
 #include "nts/Errors.hpp"
 #include "nts/Factory.hpp"
+#include "nts/ComponentFactory.hpp"
+#include "nts/components/C2716.hpp"
 #include "nts/IComponent.hpp"
 #include "nts/Lexer.hpp"
 #include "nts/Parser.hpp"
@@ -45,6 +47,10 @@
 #include "nts/components/C4512.hpp"
 #include "nts/components/C4514.hpp"
 #include "nts/components/C4801.hpp"
+#include "nts/components/Logger.hpp"
+#include <cstdio>
+#include <fstream>
+#include <vector>
 
 
 using namespace nts;
@@ -2259,4 +2265,262 @@ Test(c4801, read_unwritten_returns_zero) {
     for (auto p : dataPins)
         cr_assert_eq(chip.compute(p), False,
             "Data pin %zu must be 0 for unwritten address", p);
+}
+
+static std::vector<unsigned char> readLogFile()
+{
+    std::ifstream f("./log.bin", std::ios::binary);
+    return std::vector<unsigned char>(
+        std::istreambuf_iterator<char>(f),
+        std::istreambuf_iterator<char>());
+}
+
+Test(logger, invalid_pin_zero_throws) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    bool threw = false;
+    try { logger.compute(0); } catch (const NtsException &) { threw = true; }
+    cr_assert(threw, "compute(0) must throw NtsException");
+}
+
+Test(logger, invalid_pin_eleven_throws) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    bool threw = false;
+    try { logger.compute(11); } catch (const NtsException &) { threw = true; }
+    cr_assert(threw, "compute(11) must throw NtsException");
+}
+
+Test(logger, compute_valid_pin_returns_link) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *d0 = wirePin(logger, 1); d0->value = True;
+    cr_assert_eq(logger.compute(1), True, "compute(1) must return the linked value");
+}
+
+Test(logger, no_write_without_rising_edge) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *clk = wirePin(logger, 9);  clk->value = False;
+    auto *inh = wirePin(logger, 10); inh->value = False;
+    for (std::size_t i = 1; i <= 8; i++) { auto *d = wirePin(logger, i); d->value = True; }
+
+    logger.simulate(1);
+
+    auto data = readLogFile();
+    cr_assert_eq(data.size(), 0u, "No byte should be written when clock never rises");
+}
+
+Test(logger, write_on_rising_edge_byte_d0) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *clk = wirePin(logger, 9);  clk->value = False;
+    auto *inh = wirePin(logger, 10); inh->value = False;
+    auto *d0 = wirePin(logger, 1); d0->value = True;
+    for (std::size_t i = 2; i <= 8; i++) { auto *d = wirePin(logger, i); d->value = False; }
+
+    logger.simulate(1);
+    clk->value = True;
+    logger.simulate(2);
+
+    auto data = readLogFile();
+    cr_assert_eq(data.size(), 1u, "Exactly one byte should be written on rising edge");
+    cr_assert_eq(data[0], (unsigned char)0x01, "Written byte should be 0x01 (D0 set)");
+}
+
+Test(logger, no_write_when_inhibit_true) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *clk = wirePin(logger, 9);  clk->value = False;
+    auto *inh = wirePin(logger, 10); inh->value = True;
+    for (std::size_t i = 1; i <= 8; i++) { auto *d = wirePin(logger, i); d->value = True; }
+
+    logger.simulate(1);
+    clk->value = True;
+    logger.simulate(2);
+
+    auto data = readLogFile();
+    cr_assert_eq(data.size(), 0u, "No byte should be written when inhibit is True");
+}
+
+Test(logger, byte_assembly_d7_msb) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *clk = wirePin(logger, 9);  clk->value = False;
+    auto *inh = wirePin(logger, 10); inh->value = False;
+    for (std::size_t i = 1; i <= 7; i++) { auto *d = wirePin(logger, i); d->value = False; }
+    auto *d7 = wirePin(logger, 8); d7->value = True;
+
+    logger.simulate(1);
+    clk->value = True;
+    logger.simulate(2);
+
+    auto data = readLogFile();
+    cr_assert_eq(data.size(), 1u, "One byte should be written");
+    cr_assert_eq(data[0], (unsigned char)0x80, "D7 set only should give byte 0x80");
+}
+
+Test(logger, no_double_write_on_sustained_clock_high) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *clk = wirePin(logger, 9);  clk->value = False;
+    auto *inh = wirePin(logger, 10); inh->value = False;
+    for (std::size_t i = 1; i <= 8; i++) { auto *d = wirePin(logger, i); d->value = False; }
+
+    logger.simulate(1);
+    clk->value = True;
+    logger.simulate(2);
+    logger.simulate(3);
+
+    auto data = readLogFile();
+    cr_assert_eq(data.size(), 1u, "Only one byte written for sustained high clock");
+}
+
+Test(component_factory, sets_name_on_created_component) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("input", "my_input");
+    auto *base = dynamic_cast<AComponent *>(comp.get());
+    cr_assert_not_null(base);
+    cr_assert_str_eq(base->getName().c_str(), "my_input",
+        "createComponent should assign the given name to the component");
+}
+
+Test(component_factory, unknown_type_throws_nts_exception) {
+    ComponentFactory factory;
+    cr_assert_throw(factory.createComponent("does_not_exist", "x"), NtsException,
+        "createComponent with an unknown type should throw NtsException");
+}
+
+Test(component_factory, empty_type_throws_nts_exception) {
+    ComponentFactory factory;
+    cr_assert_throw(factory.createComponent("", "x"), NtsException,
+        "createComponent with an empty type string should throw NtsException");
+}
+
+Test(component_factory, creates_input) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("input", "a");
+    cr_assert_not_null(dynamic_cast<Input *>(comp.get()),
+        "type \"input\" should produce an Input instance");
+}
+
+Test(component_factory, creates_output) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("output", "a");
+    cr_assert_not_null(dynamic_cast<Output *>(comp.get()),
+        "type \"output\" should produce an Output instance");
+}
+
+Test(component_factory, creates_true) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("true", "a");
+    cr_assert_not_null(dynamic_cast<TrueComp *>(comp.get()),
+        "type \"true\" should produce a TrueComp instance");
+}
+
+Test(component_factory, creates_false) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("false", "a");
+    cr_assert_not_null(dynamic_cast<FalseComp *>(comp.get()),
+        "type \"false\" should produce a FalseComp instance");
+}
+
+Test(component_factory, creates_clock) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("clock", "a");
+    cr_assert_not_null(dynamic_cast<Clock *>(comp.get()),
+        "type \"clock\" should produce a Clock instance");
+}
+
+Test(component_factory, creates_and_gate) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("and", "a");
+    cr_assert_not_null(dynamic_cast<AndGate *>(comp.get()),
+        "type \"and\" should produce an AndGate instance");
+}
+
+Test(component_factory, creates_or_gate) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("or", "a");
+    cr_assert_not_null(dynamic_cast<OrGate *>(comp.get()),
+        "type \"or\" should produce an OrGate instance");
+}
+
+Test(component_factory, creates_xor_gate) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("xor", "a");
+    cr_assert_not_null(dynamic_cast<XorGate *>(comp.get()),
+        "type \"xor\" should produce an XorGate instance");
+}
+
+Test(component_factory, creates_not_gate) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("not", "a");
+    cr_assert_not_null(dynamic_cast<NotGate *>(comp.get()),
+        "type \"not\" should produce a NotGate instance");
+}
+
+Test(component_factory, creates_c4001) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4001", "a");
+    cr_assert_not_null(dynamic_cast<C4001 *>(comp.get()),
+        "type \"4001\" should produce a C4001 instance");
+}
+
+Test(component_factory, creates_c4011) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4011", "a");
+    cr_assert_not_null(dynamic_cast<C4011 *>(comp.get()),
+        "type \"4011\" should produce a C4011 instance");
+}
+
+Test(component_factory, creates_c4069) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4069", "a");
+    cr_assert_not_null(dynamic_cast<C4069 *>(comp.get()),
+        "type \"4069\" should produce a C4069 instance");
+}
+
+Test(component_factory, creates_c4008) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4008", "a");
+    cr_assert_not_null(dynamic_cast<C4008 *>(comp.get()),
+        "type \"4008\" should produce a C4008 instance");
+}
+
+Test(component_factory, creates_c4013) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4013", "a");
+    cr_assert_not_null(dynamic_cast<C4013 *>(comp.get()),
+        "type \"4013\" should produce a C4013 instance");
+}
+
+Test(component_factory, creates_c4801) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4801", "a");
+    cr_assert_not_null(dynamic_cast<C4801 *>(comp.get()),
+        "type \"4801\" should produce a C4801 instance");
+}
+
+Test(component_factory, creates_c2716) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("2716", "a");
+    cr_assert_not_null(dynamic_cast<C2716 *>(comp.get()),
+        "type \"2716\" should produce a C2716 instance");
+}
+
+Test(component_factory, creates_logger) {
+    std::remove("./log.bin");
+    ComponentFactory factory;
+    auto comp = factory.createComponent("logger", "a");
+    cr_assert_not_null(dynamic_cast<Logger *>(comp.get()),
+        "type \"logger\" should produce a Logger instance");
+}
+
+Test(component_factory, each_call_returns_new_instance) {
+    ComponentFactory factory;
+    auto a = factory.createComponent("and", "g1");
+    auto b = factory.createComponent("and", "g2");
+    cr_assert_neq(a.get(), b.get(),
+        "each createComponent call should return a distinct object");
 }

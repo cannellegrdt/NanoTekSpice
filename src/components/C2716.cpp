@@ -15,7 +15,7 @@ namespace nts {
     {
         std::ifstream file(path, std::ios::binary);
         if (!file.is_open())
-            throw NtsException("C2716: cannot open ROM file: " + path);
+            return;
         file.read(reinterpret_cast<char *>(_data.data()), 2048);
         std::streamsize bytesRead = file.gcount();
         for (std::streamsize i = bytesRead; i < 2048; i++)
