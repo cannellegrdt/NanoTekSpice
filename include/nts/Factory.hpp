@@ -13,16 +13,15 @@
 
 namespace nts {
 
-    class IComponent;
+class IComponent;
 
+class IComponentFactory {
+public:
+  virtual ~IComponentFactory() = default;
 
-    class IComponentFactory {
-    public:
-        virtual ~IComponentFactory() = default;
-
-        virtual std::unique_ptr<IComponent> createComponent(
-            const std::string &type) const = 0;
-    };
+  virtual std::unique_ptr<IComponent>
+  createComponent(const std::string &type, const std::string &name) const = 0;
+};
 
 }
 

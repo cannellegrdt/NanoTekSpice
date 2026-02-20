@@ -14,21 +14,23 @@
 
 namespace nts {
 
-    namespace {
+namespace {
 
-        class StubComponent : public AComponent {
-        public:
-            void simulate(std::size_t) override {}
-            Tristate compute(std::size_t) override { return Undefined; }
-        };
+class StubComponent : public AComponent {
+public:
+  void simulate(std::size_t) override {}
+  Tristate compute(std::size_t) override { return Undefined; }
+};
 
-    }
+}
 
-    std::unique_ptr<IComponent> StubFactory::createComponent(
-        const std::string &type) const
-    {
-        std::cout << type << std::endl;
-        return std::make_unique<StubComponent>();
-    }
+std::unique_ptr<IComponent>
+StubFactory::createComponent(const std::string &type,
+                             const std::string &name) const {
+  std::cout << type << std::endl;
+  auto component = std::make_unique<StubComponent>();
+  component->setName(name);
+  return component;
+}
 
 }
