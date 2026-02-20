@@ -37,6 +37,15 @@
 #include "nts/components/C4069.hpp"
 #include "nts/components/C4071.hpp"
 #include "nts/components/C4081.hpp"
+#include "nts/components/C4008.hpp"
+#include "nts/components/C4013.hpp"
+#include "nts/components/C4017.hpp"
+#include "nts/components/C4040.hpp"
+#include "nts/components/C4094.hpp"
+#include "nts/components/C4512.hpp"
+#include "nts/components/C4514.hpp"
+#include "nts/components/C4801.hpp"
+
 
 using namespace nts;
 
@@ -1610,4 +1619,644 @@ Test(c4081, simulate_no_crash) {
   C4081 chip("chip");
   chip.simulate(1);
   cr_assert(true, "simulate() should not throw");
+}
+
+TestableComponent *wirePin(AComponent &chip, std::size_t chipPin)
+{
+    auto *src = new TestableComponent();
+    chip.setLink(chipPin, *src, 1);
+    return src;
+}
+
+Test(c4008, power_pins_throw) {
+    C4008 chip("chip");
+    bool t8 = false, t16 = false;
+    try { chip.compute(8);  } catch (const NtsException &) { t8  = true; }
+    try { chip.compute(16); } catch (const NtsException &) { t16 = true; }
+    cr_assert(t8,  "Pin 8 (VSS) must throw");
+    cr_assert(t16, "Pin 16 (VDD) must throw");
+}
+
+Test(c4008, invalid_pin_throws) {
+    C4008 chip("chip");
+    bool thrown = false;
+    try { chip.compute(0); } catch (const NtsException &) { thrown = true; }
+    cr_assert(thrown, "Pin 0 must throw");
+}
+
+Test(c4008, zero_plus_zero_no_carry) {
+    C4008 chip("chip");
+    std::size_t aPins[]   = {7, 5, 3, 1};
+    std::size_t bPins[]   = {6, 4, 2, 15};
+    for (auto p : aPins) { auto *s = wirePin(chip, p); s->value = False; }
+    for (auto p : bPins) { auto *s = wirePin(chip, p); s->value = False; }
+    auto *cin = wirePin(chip, 9); cin->value = False;
+
+    chip.simulate(1);
+
+    cr_assert_eq(chip.compute(10), False, "Sum0 must be 0");
+    cr_assert_eq(chip.compute(11), False, "Sum1 must be 0");
+    cr_assert_eq(chip.compute(12), False, "Sum2 must be 0");
+    cr_assert_eq(chip.compute(13), False, "Sum3 must be 0");
+    cr_assert_eq(chip.compute(14), False, "Cout must be 0");
+}
+
+Test(c4008, one_plus_one_no_carry) {
+    C4008 chip("chip");
+    std::size_t aPins[] = {7, 5, 3, 1};
+    std::size_t bPins[] = {6, 4, 2, 15};
+
+    for (int i = 0; i < 4; i++) {
+        auto *sa = wirePin(chip, aPins[i]); sa->value = (i == 3) ? True : False;
+        auto *sb = wirePin(chip, bPins[i]); sb->value = (i == 3) ? True : False;
+    }
+    auto *cin = wirePin(chip, 9); cin->value = False;
+
+    chip.simulate(1);
+
+    cr_assert_eq(chip.compute(10), False, "Sum0 must be 0");
+    cr_assert_eq(chip.compute(11), True,  "Sum1 must be 1");
+    cr_assert_eq(chip.compute(12), False, "Sum2 must be 0");
+    cr_assert_eq(chip.compute(13), False, "Sum3 must be 0");
+    cr_assert_eq(chip.compute(14), False, "Cout must be 0");
+}
+
+Test(c4008, all_ones_with_carry_in) {
+    C4008 chip("chip");
+    std::size_t aPins[] = {7, 5, 3, 1};
+    std::size_t bPins[] = {6, 4, 2, 15};
+    for (auto p : aPins) { auto *s = wirePin(chip, p); s->value = True; }
+    for (auto p : bPins) { auto *s = wirePin(chip, p); s->value = True; }
+    auto *cin = wirePin(chip, 9); cin->value = True;
+
+    chip.simulate(1);
+
+    cr_assert_eq(chip.compute(10), True, "Sum0 must be 1");
+    cr_assert_eq(chip.compute(11), True, "Sum1 must be 1");
+    cr_assert_eq(chip.compute(12), True, "Sum2 must be 1");
+    cr_assert_eq(chip.compute(13), True, "Sum3 must be 1");
+    cr_assert_eq(chip.compute(14), True, "Cout must be 1");
+}
+
+Test(c4008, undefined_input_propagates) {
+    C4008 chip("chip");
+    std::size_t aPins[] = {7, 5, 3, 1};
+    std::size_t bPins[] = {6, 4, 2, 15};
+    for (auto p : aPins) { auto *s = wirePin(chip, p); s->value = Undefined; }
+    for (auto p : bPins) { auto *s = wirePin(chip, p); s->value = False; }
+    auto *cin = wirePin(chip, 9); cin->value = False;
+
+    chip.simulate(1);
+
+    cr_assert_eq(chip.compute(10), Undefined, "Sum0 must be Undefined with undefined inputs");
+}
+
+Test(c4013, power_pins_throw) {
+    C4013 chip("chip");
+    bool t7 = false, t14 = false;
+    try { chip.compute(7);  } catch (const NtsException &) { t7  = true; }
+    try { chip.compute(14); } catch (const NtsException &) { t14 = true; }
+    cr_assert(t7,  "Pin 7 (VSS) must throw");
+    cr_assert(t14, "Pin 14 (VDD) must throw");
+}
+
+Test(c4013, ff1_set_dominates_reset) {
+    C4013 chip("chip");
+    auto *s = wirePin(chip, 6); s->value = True;
+    auto *r = wirePin(chip, 4); r->value = True;
+    auto *clk = wirePin(chip, 3); clk->value = False;
+    auto *d = wirePin(chip, 5); d->value = False;
+
+    chip.simulate(1);
+
+    cr_assert_eq(chip.compute(1), True,  "FF1 Q must be 1 when Set");
+    cr_assert_eq(chip.compute(2), False, "FF1 Qbar must be 0 when Set");
+}
+
+Test(c4013, ff1_reset_clears_q) {
+    C4013 chip("chip");
+    auto *s = wirePin(chip, 6); s->value = False;
+    auto *r = wirePin(chip, 4); r->value = True;
+    auto *clk = wirePin(chip, 3); clk->value = False;
+    auto *d = wirePin(chip, 5); d->value = True;
+
+    chip.simulate(1);
+
+    cr_assert_eq(chip.compute(1), False, "FF1 Q must be 0 when Reset");
+    cr_assert_eq(chip.compute(2), True,  "FF1 Qbar must be 1 when Reset");
+}
+
+Test(c4013, ff1_rising_edge_captures_d) {
+    C4013 chip("chip");
+    auto *s = wirePin(chip, 6); s->value = False;
+    auto *r = wirePin(chip, 4); r->value = False;
+    auto *clk = wirePin(chip, 3); clk->value = False;
+    auto *d = wirePin(chip, 5); d->value = True;
+
+    chip.simulate(1);
+    cr_assert_eq(chip.compute(1), Undefined, "Q before first rising edge");
+
+    clk->value = True;
+    chip.simulate(2);
+    cr_assert_eq(chip.compute(1), True,  "FF1 Q must capture D=1 on rising edge");
+    cr_assert_eq(chip.compute(2), False, "FF1 Qbar must be NOT Q");
+}
+
+Test(c4013, ff1_no_capture_on_falling_edge) {
+    C4013 chip("chip");
+    auto *s = wirePin(chip, 6); s->value = False;
+    auto *r = wirePin(chip, 4); r->value = False;
+    auto *clk = wirePin(chip, 3); clk->value = False;
+    auto *d = wirePin(chip, 5); d->value = True;
+
+    clk->value = True;
+    chip.simulate(1);
+
+    d->value = False;
+    clk->value = False;
+    chip.simulate(2);
+
+    cr_assert_eq(chip.compute(1), True, "FF1 Q must not change on falling edge");
+}
+
+Test(c4013, ff2_independent_of_ff1) {
+    C4013 chip("chip");
+    auto *s1 = wirePin(chip, 6); s1->value = False;
+    auto *r1 = wirePin(chip, 4); r1->value = False;
+    auto *clk1 = wirePin(chip, 3); clk1->value = False;
+    auto *d1 = wirePin(chip, 5); d1->value = False;
+
+    auto *s2 = wirePin(chip, 8); s2->value = False;
+    auto *r2 = wirePin(chip, 10); r2->value = False;
+    auto *clk2 = wirePin(chip, 11); clk2->value = False;
+    auto *d2 = wirePin(chip, 9); d2->value = True;
+
+    chip.simulate(1);
+    clk2->value = True;
+    chip.simulate(2);
+
+    cr_assert_eq(chip.compute(13), True, "FF2 Q must capture D=1");
+    cr_assert_eq(chip.compute(1),  Undefined, "FF1 Q unaffected");
+}
+
+Test(c4017, power_pins_throw) {
+    C4017 chip("chip");
+    bool t8 = false, t16 = false;
+    try { chip.compute(8);  } catch (const NtsException &) { t8  = true; }
+    try { chip.compute(16); } catch (const NtsException &) { t16 = true; }
+    cr_assert(t8,  "Pin 8 must throw");
+    cr_assert(t16, "Pin 16 must throw");
+}
+
+Test(c4017, reset_forces_q0) {
+    C4017 chip("chip");
+    auto *clk   = wirePin(chip, 14); clk->value = False;
+    auto *inh   = wirePin(chip, 13); inh->value = False;
+    auto *reset = wirePin(chip, 15); reset->value = True;
+
+    chip.simulate(1);
+
+    cr_assert_eq(chip.compute(3),  True,  "Q0 (pin 3) must be True after reset");
+    cr_assert_eq(chip.compute(2),  False, "Q1 (pin 2) must be False after reset");
+    cr_assert_eq(chip.compute(12), False, "CarryOut must be False at count 0");
+}
+
+Test(c4017, counts_on_rising_edge) {
+    C4017 chip("chip");
+    auto *clk   = wirePin(chip, 14); clk->value = False;
+    auto *inh   = wirePin(chip, 13); inh->value = False;
+    auto *reset = wirePin(chip, 15); reset->value = True;
+
+    chip.simulate(1);
+    reset->value = False;
+
+    static const std::size_t qPins[] = {3, 2, 4, 7, 10, 1, 5, 6, 9, 11};
+
+    for (int edge = 0; edge < 3; edge++) {
+        clk->value = True;
+        chip.simulate(edge * 2 + 2);
+        clk->value = False;
+        chip.simulate(edge * 2 + 3);
+
+        for (int q = 0; q < 10; q++) {
+            Tristate expected = (q == edge + 1) ? True : False;
+            cr_assert_eq(chip.compute(qPins[q]), expected,
+                "After edge %d: Q%d mismatch", edge + 1, q);
+        }
+    }
+}
+
+Test(c4017, inhibit_blocks_counting) {
+    C4017 chip("chip");
+    auto *clk   = wirePin(chip, 14); clk->value = False;
+    auto *inh   = wirePin(chip, 13); inh->value = False;
+    auto *reset = wirePin(chip, 15); reset->value = True;
+
+    chip.simulate(1);
+    reset->value = False;
+
+    clk->value = True; chip.simulate(2);
+    clk->value = False; chip.simulate(3);
+
+    inh->value = True;
+
+    clk->value = True; chip.simulate(4);
+    clk->value = False; chip.simulate(5);
+    clk->value = True; chip.simulate(6);
+    clk->value = False; chip.simulate(7);
+
+    cr_assert_eq(chip.compute(2), True,  "Q1 must stay True while inhibited");
+    cr_assert_eq(chip.compute(4), False, "Q2 must remain False while inhibited");
+}
+
+Test(c4017, no_spurious_edge_after_inhibit) {
+    C4017 chip("chip");
+    auto *clk   = wirePin(chip, 14); clk->value = False;
+    auto *inh   = wirePin(chip, 13); inh->value = False;
+    auto *reset = wirePin(chip, 15); reset->value = True;
+
+    chip.simulate(1);
+    reset->value = False;
+
+    clk->value = True; chip.simulate(2);
+    clk->value = False; chip.simulate(3);
+
+    inh->value = True;
+    clk->value = True; chip.simulate(4);
+
+    inh->value = False;
+    chip.simulate(5);
+
+    cr_assert_eq(chip.compute(2), True,  "Q1 must still be True (no spurious advance)");
+    cr_assert_eq(chip.compute(4), False, "Q2 must remain False (no spurious advance)");
+}
+
+Test(c4017, carry_out_high_for_counts_0_to_4) {
+    C4017 chip("chip");
+    auto *clk   = wirePin(chip, 14); clk->value = False;
+    auto *inh   = wirePin(chip, 13); inh->value = False;
+    auto *reset = wirePin(chip, 15); reset->value = True;
+
+    chip.simulate(1);
+    reset->value = False;
+
+    std::size_t tick = 2;
+    for (int count = 0; count < 10; count++) {
+        Tristate expected = (count < 5) ? True : False;
+        cr_assert_eq(chip.compute(12), expected,
+            "CarryOut mismatch at count %d", count);
+
+        clk->value = True;  chip.simulate(tick++);
+        clk->value = False; chip.simulate(tick++);
+    }
+}
+
+Test(c4040, power_pins_throw) {
+    C4040 chip("chip");
+    bool t8 = false, t16 = false;
+    try { chip.compute(8);  } catch (const NtsException &) { t8  = true; }
+    try { chip.compute(16); } catch (const NtsException &) { t16 = true; }
+    cr_assert(t8,  "Pin 8 must throw");
+    cr_assert(t16, "Pin 16 must throw");
+}
+
+Test(c4040, reset_clears_counter) {
+    C4040 chip("chip");
+    auto *clk   = wirePin(chip, 10); clk->value = False;
+    auto *reset = wirePin(chip, 11); reset->value = True;
+
+    chip.simulate(1);
+
+    static const std::size_t outPins[] = {9, 7, 6, 5, 3, 2, 4, 13, 12, 14, 15, 1};
+    for (auto p : outPins)
+        cr_assert_eq(chip.compute(p), False, "Pin %zu must be 0 after reset", p);
+}
+
+Test(c4040, counts_on_falling_edge) {
+    C4040 chip("chip");
+    auto *clk   = wirePin(chip, 10); clk->value = True;
+    auto *reset = wirePin(chip, 11); reset->value = True;
+
+    chip.simulate(1);
+    reset->value = False;
+
+    clk->value = False; chip.simulate(2);
+    cr_assert_eq(chip.compute(9), True, "Q0 must be 1 after first falling edge");
+
+    clk->value = True; chip.simulate(3);
+    cr_assert_eq(chip.compute(9), True, "Q0 must stay 1 on rising edge");
+
+    clk->value = False; chip.simulate(4);
+    cr_assert_eq(chip.compute(9), False, "Q0 must be 0 at count 2");
+    cr_assert_eq(chip.compute(7), True,  "Q1 must be 1 at count 2");
+}
+
+Test(c4040, no_spurious_edge_after_reset) {
+    C4040 chip("chip");
+    auto *clk   = wirePin(chip, 10); clk->value = True;
+    auto *reset = wirePin(chip, 11); reset->value = True;
+
+    chip.simulate(1);
+    clk->value = False;
+    chip.simulate(2);
+
+    reset->value = False;
+    chip.simulate(3);
+
+    static const std::size_t outPins[] = {9, 7, 6, 5, 3, 2, 4, 13, 12, 14, 15, 1};
+    for (auto p : outPins)
+        cr_assert_eq(chip.compute(p), False,
+            "Pin %zu must be 0 — no spurious count after reset release", p);
+}
+
+Test(c4040, wraps_at_4096) {
+    C4040 chip("chip");
+    auto *clk   = wirePin(chip, 10); clk->value = True;
+    auto *reset = wirePin(chip, 11); reset->value = True;
+
+    chip.simulate(1);
+    reset->value = False;
+
+    std::size_t tick = 2;
+    for (int i = 0; i < 4096; i++) {
+        clk->value = False; chip.simulate(tick++);
+        clk->value = True;  chip.simulate(tick++);
+    }
+
+    static const std::size_t outPins[] = {9, 7, 6, 5, 3, 2, 4, 13, 12, 14, 15, 1};
+    for (auto p : outPins)
+        cr_assert_eq(chip.compute(p), False, "Pin %zu must be 0 after wrap-around", p);
+}
+
+Test(c4094, power_pins_throw) {
+    C4094 chip("chip");
+    bool t8 = false, t16 = false;
+    try { chip.compute(8);  } catch (const NtsException &) { t8  = true; }
+    try { chip.compute(16); } catch (const NtsException &) { t16 = true; }
+    cr_assert(t8,  "Pin 8 must throw");
+    cr_assert(t16, "Pin 16 must throw");
+}
+
+Test(c4094, output_disabled_when_oe_low) {
+    C4094 chip("chip");
+    auto *strobe = wirePin(chip, 1); strobe->value = False;
+    auto *data   = wirePin(chip, 2); data->value = True;
+    auto *clk    = wirePin(chip, 3); clk->value = False;
+    auto *oe     = wirePin(chip, 15); oe->value = False;
+
+    chip.simulate(1);
+
+    static const std::size_t outPins[] = {4, 5, 6, 7, 14, 13, 12, 11};
+    for (auto p : outPins)
+        cr_assert_eq(chip.compute(p), Undefined,
+            "Pin %zu must be Undefined when OE=0", p);
+}
+
+Test(c4094, shift_and_strobe) {
+    C4094 chip("chip");
+    auto *strobe = wirePin(chip, 1); strobe->value = False;
+    auto *data   = wirePin(chip, 2); data->value = False;
+    auto *clk    = wirePin(chip, 3); clk->value = False;
+    auto *oe     = wirePin(chip, 15); oe->value = True;
+
+    int pattern[] = {1, 0, 1, 0, 1, 0, 1, 0};
+    std::size_t tick = 1;
+
+    for (int i = 0; i < 8; i++) {
+        data->value = pattern[i] ? True : False;
+        clk->value  = True;  chip.simulate(tick++);
+        clk->value  = False; chip.simulate(tick++);
+    }
+
+    strobe->value = True;
+    chip.simulate(tick++);
+
+    static const std::size_t outPins[] = {4, 5, 6, 7, 14, 13, 12, 11};
+    for (int i = 0; i < 8; i++) {
+        Tristate expected = pattern[i] ? True : False;
+        cr_assert_eq(chip.compute(outPins[i]), expected,
+            "Output %d mismatch after strobe", i);
+    }
+}
+
+Test(c4094, qs_serial_output) {
+    C4094 chip("chip");
+    auto *strobe = wirePin(chip, 1); strobe->value = False;
+    auto *data   = wirePin(chip, 2); data->value = True;
+    auto *clk    = wirePin(chip, 3); clk->value = False;
+    auto *oe     = wirePin(chip, 15); oe->value = True;
+
+    std::size_t tick = 1;
+    for (int i = 0; i < 8; i++) {
+        clk->value = True;  chip.simulate(tick++);
+        clk->value = False; chip.simulate(tick++);
+    }
+    cr_assert_eq(chip.compute(9), True, "Qs (pin9) must reflect register[7]");
+}
+
+Test(c4512, power_pins_throw) {
+    C4512 chip("chip");
+    bool t8 = false, t16 = false;
+    try { chip.compute(8);  } catch (const NtsException &) { t8  = true; }
+    try { chip.compute(16); } catch (const NtsException &) { t16 = true; }
+    cr_assert(t8,  "Pin 8 must throw");
+    cr_assert(t16, "Pin 16 must throw");
+}
+
+Test(c4512, inhibit_forces_output_low) {
+    C4512 chip("chip");
+    auto *inh = wirePin(chip, 10); inh->value = True;
+    auto *en  = wirePin(chip, 15); en->value  = True;
+    auto *a   = wirePin(chip, 11); a->value   = False;
+    auto *b   = wirePin(chip, 12); b->value   = False;
+    auto *c   = wirePin(chip, 13); c->value   = False;
+    auto *d0  = wirePin(chip,  1); d0->value  = True;
+
+    cr_assert_eq(chip.compute(14), False, "Output must be False when inhibited");
+}
+
+Test(c4512, enable_false_gives_undefined) {
+    C4512 chip("chip");
+    auto *inh = wirePin(chip, 10); inh->value = False;
+    auto *en  = wirePin(chip, 15); en->value  = False;
+    auto *a   = wirePin(chip, 11); a->value   = False;
+    auto *b   = wirePin(chip, 12); b->value   = False;
+    auto *c   = wirePin(chip, 13); c->value   = False;
+
+    cr_assert_eq(chip.compute(14), Undefined, "Output must be Undefined when EN=0");
+}
+
+Test(c4512, selects_channel_0) {
+    C4512 chip("chip");
+    auto *inh = wirePin(chip, 10); inh->value = False;
+    auto *en  = wirePin(chip, 15); en->value  = True;
+    auto *a   = wirePin(chip, 11); a->value   = False;
+    auto *b   = wirePin(chip, 12); b->value   = False;
+    auto *c   = wirePin(chip, 13); c->value   = False;
+    auto *d0  = wirePin(chip,  1); d0->value  = True;
+
+    cr_assert_eq(chip.compute(14), True, "Channel 0 (pin 1) must be selected");
+}
+
+Test(c4512, selects_channel_7) {
+    C4512 chip("chip");
+    auto *inh = wirePin(chip, 10); inh->value = False;
+    auto *en  = wirePin(chip, 15); en->value  = True;
+    auto *a   = wirePin(chip, 11); a->value   = True;
+    auto *b   = wirePin(chip, 12); b->value   = True;
+    auto *c   = wirePin(chip, 13); c->value   = True;
+    auto *d7  = wirePin(chip,  9); d7->value  = True;
+    for (std::size_t p : {1u,2u,3u,4u,5u,6u,7u}) {
+        auto *s = wirePin(chip, p); s->value = False;
+    }
+
+    cr_assert_eq(chip.compute(14), True, "Channel 7 (pin 9) must be selected");
+}
+
+Test(c4514, power_pins_throw) {
+    C4514 chip("chip");
+    bool t12 = false, t24 = false;
+    try { chip.compute(12); } catch (const NtsException &) { t12 = true; }
+    try { chip.compute(24); } catch (const NtsException &) { t24 = true; }
+    cr_assert(t12, "Pin 12 must throw");
+    cr_assert(t24, "Pin 24 must throw");
+}
+
+Test(c4514, inhibit_forces_all_outputs_low) {
+    C4514 chip("chip");
+    auto *inh    = wirePin(chip, 23); inh->value = True;
+    auto *strobe = wirePin(chip,  1); strobe->value = True;
+    auto *a0     = wirePin(chip,  2); a0->value  = False;
+    auto *a1     = wirePin(chip,  3); a1->value  = False;
+    auto *a2     = wirePin(chip, 21); a2->value  = False;
+    auto *a3     = wirePin(chip, 22); a3->value  = False;
+
+    chip.simulate(1);
+
+    static const std::size_t outPins[] = {
+        11, 9, 10, 8, 7, 6, 5, 4, 18, 17, 20, 19, 14, 13, 16, 15
+    };
+    for (auto p : outPins)
+        cr_assert_eq(chip.compute(p), False, "Pin %zu must be False when inhibited", p);
+}
+
+Test(c4514, selects_output_0) {
+    C4514 chip("chip");
+    auto *inh    = wirePin(chip, 23); inh->value = False;
+    auto *strobe = wirePin(chip,  1); strobe->value = True;
+    auto *a0     = wirePin(chip,  2); a0->value  = False;
+    auto *a1     = wirePin(chip,  3); a1->value  = False;
+    auto *a2     = wirePin(chip, 21); a2->value  = False;
+    auto *a3     = wirePin(chip, 22); a3->value  = False;
+
+    chip.simulate(1);
+
+    cr_assert_eq(chip.compute(11), True, "Output 0 (pin 11) must be True");
+    cr_assert_eq(chip.compute(9),  False, "Output 1 (pin 9) must be False");
+}
+
+Test(c4514, selects_output_15) {
+    C4514 chip("chip");
+    auto *inh    = wirePin(chip, 23); inh->value = False;
+    auto *strobe = wirePin(chip,  1); strobe->value = True;
+    auto *a0     = wirePin(chip,  2); a0->value  = True;
+    auto *a1     = wirePin(chip,  3); a1->value  = True;
+    auto *a2     = wirePin(chip, 21); a2->value  = True;
+    auto *a3     = wirePin(chip, 22); a3->value  = True;
+
+    chip.simulate(1);
+
+    static const std::size_t outPins[] = {
+        11, 9, 10, 8, 7, 6, 5, 4, 18, 17, 20, 19, 14, 13, 16, 15
+    };
+    for (int i = 0; i < 15; i++)
+        cr_assert_eq(chip.compute(outPins[i]), False, "Output %d must be False", i);
+    cr_assert_eq(chip.compute(outPins[15]), True, "Output 15 (pin 15) must be True");
+}
+
+Test(c4514, strobe_latches_address) {
+    C4514 chip("chip");
+    auto *inh    = wirePin(chip, 23); inh->value = False;
+    auto *strobe = wirePin(chip,  1); strobe->value = True;
+    auto *a0     = wirePin(chip,  2); a0->value  = False;
+    auto *a1     = wirePin(chip,  3); a1->value  = False;
+    auto *a2     = wirePin(chip, 21); a2->value  = False;
+    auto *a3     = wirePin(chip, 22); a3->value  = False;
+
+    chip.simulate(1);
+
+    strobe->value = False;
+    a0->value = True;
+    chip.simulate(2);
+
+    cr_assert_eq(chip.compute(11), True,  "Output 0 must stay latched");
+    cr_assert_eq(chip.compute(9),  False, "Output 1 must stay False");
+}
+
+Test(c4801, power_pins_throw) {
+    C4801 chip("chip");
+    bool t12 = false, t19 = false, t24 = false;
+    try { chip.compute(12); } catch (const NtsException &) { t12 = true; }
+    try { chip.compute(19); } catch (const NtsException &) { t19 = true; }
+    try { chip.compute(24); } catch (const NtsException &) { t24 = true; }
+    cr_assert(t12, "Pin 12 must throw");
+    cr_assert(t19, "Pin 19 must throw");
+    cr_assert(t24, "Pin 24 must throw");
+}
+
+Test(c4801, output_disabled_without_oe) {
+    C4801 chip("chip");
+    auto *cs = wirePin(chip, 18); cs->value = True;
+    auto *we = wirePin(chip, 21); we->value = False;
+    auto *oe = wirePin(chip, 20); oe->value = False;
+
+    for (std::size_t p : {8u, 7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u}) {
+        auto *s = wirePin(chip, p); s->value = False;
+    }
+    chip.simulate(1);
+
+    static const std::size_t dataPins[] = {9, 10, 11, 13, 14, 15, 16, 17};
+    for (auto p : dataPins)
+        cr_assert_eq(chip.compute(p), Undefined,
+            "Pin %zu must be Undefined when OE=0", p);
+}
+
+Test(c4801, write_then_read) {
+    C4801 chip("chip");
+    auto *cs = wirePin(chip, 18); cs->value = True;
+    auto *we = wirePin(chip, 21); we->value = True;
+    auto *oe = wirePin(chip, 20); oe->value = False;
+
+    std::size_t addrPins[] = {8, 7, 6, 5, 4, 3, 2, 1, 23, 22};
+    for (auto p : addrPins) { auto *s = wirePin(chip, p); s->value = False; }
+
+    std::size_t dataPins[] = {9, 10, 11, 13, 14, 15, 16, 17};
+    for (auto p : dataPins) { auto *s = wirePin(chip, p); s->value = True; }
+
+    chip.simulate(1);
+    chip.simulate(2);
+
+    we->value = False;
+    oe->value = True;
+    chip.simulate(3);
+
+    for (auto p : dataPins)
+        cr_assert_eq(chip.compute(p), True, "Data pin %zu must be 1 after write 0xFF", p);
+}
+
+Test(c4801, read_unwritten_returns_zero) {
+    C4801 chip("chip");
+    auto *cs = wirePin(chip, 18); cs->value = True;
+    auto *we = wirePin(chip, 21); we->value = False;
+    auto *oe = wirePin(chip, 20); oe->value = True;
+
+    std::size_t addrPins[] = {8, 7, 6, 5, 4, 3, 2, 1, 23, 22};
+    for (auto p : addrPins) { auto *s = wirePin(chip, p); s->value = False; }
+
+    chip.simulate(1);
+
+    std::size_t dataPins[] = {9, 10, 11, 13, 14, 15, 16, 17};
+    for (auto p : dataPins)
+        cr_assert_eq(chip.compute(p), False,
+            "Data pin %zu must be 0 for unwritten address", p);
 }
