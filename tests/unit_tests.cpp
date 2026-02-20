@@ -20,11 +20,15 @@
 #include "nts/Shell.hpp"
 #include "nts/Tristate.hpp"
 #include "nts/TristateLogic.hpp"
+#include "nts/components/AndGate.hpp"
 #include "nts/components/Clock.hpp"
 #include "nts/components/False.hpp"
 #include "nts/components/Input.hpp"
+#include "nts/components/NotGate.hpp"
+#include "nts/components/OrGate.hpp"
 #include "nts/components/Output.hpp"
 #include "nts/components/True.hpp"
+#include "nts/components/XorGate.hpp"
 
 using namespace nts;
 
@@ -661,12 +665,6 @@ Test(shell, set_input_command_parsing, .init = cr_redirect_stdout) {
                "Shell should set the input value correctly");
 }
 
-// ============================================================
-// Special Components Tests (Part 4)
-// ============================================================
-
-// --- Input ---
-
 Test(input, initial_value_is_undefined) {
   Input inp("inp");
   cr_assert_eq(inp.compute(1), Undefined,
@@ -717,8 +715,6 @@ Test(input, compute_invalid_pin_throws) {
   cr_assert(thrown, "compute() with pin != 1 should throw NtsException");
 }
 
-// --- Output ---
-
 Test(output, compute_unlinked_returns_undefined) {
   Output out("out");
   cr_assert_eq(out.compute(1), Undefined,
@@ -745,8 +741,6 @@ Test(output, compute_invalid_pin_throws) {
   cr_assert(thrown, "compute() with pin != 1 should throw NtsException");
 }
 
-// --- TrueComp ---
-
 Test(true_comp, compute_always_returns_true) {
   TrueComp tc("vcc");
   cr_assert_eq(tc.compute(1), True,
@@ -771,8 +765,6 @@ Test(true_comp, compute_invalid_pin_throws) {
   cr_assert(thrown, "compute() with pin != 1 should throw NtsException");
 }
 
-// --- FalseComp ---
-
 Test(false_comp, compute_always_returns_false) {
   FalseComp fc("gnd");
   cr_assert_eq(fc.compute(1), False,
@@ -796,8 +788,6 @@ Test(false_comp, compute_invalid_pin_throws) {
   }
   cr_assert(thrown, "compute() with pin != 1 should throw NtsException");
 }
-
-// --- Clock ---
 
 Test(clock, initial_value_is_undefined) {
   Clock clk("cl");
@@ -838,9 +828,235 @@ Test(clock, toggles_from_true) {
 Test(clock, set_value_overrides_toggle) {
   Clock clk("cl");
   clk.setValue(False);
-  clk.simulate(1); // cl=False, _nextValue becomes True
-  clk.setValue(False); // override _nextValue back to False
-  clk.simulate(2); // cl=False again
+  clk.simulate(1);
+  clk.setValue(False);
+  clk.simulate(2);
   cr_assert_eq(clk.compute(1), False,
                "setValue() should override the automatic toggle");
+}
+
+Test(and_gate, unlinked_pins_return_undefined) {
+  AndGate g("g");
+  cr_assert_eq(g.compute(1), Undefined, "Unlinked pin 1 should be Undefined");
+  cr_assert_eq(g.compute(2), Undefined, "Unlinked pin 2 should be Undefined");
+  cr_assert_eq(g.compute(3), Undefined, "Output with both inputs Undefined should be Undefined");
+}
+
+Test(and_gate, invalid_pin_throws) {
+  AndGate g("g");
+  bool thrown = false;
+  try { g.compute(0); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(0) should throw");
+  thrown = false;
+  try { g.compute(4); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(4) should throw");
+}
+
+Test(and_gate, output_true_and_true) {
+  AndGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), True, "True AND True = True");
+}
+
+Test(and_gate, output_false_and_true) {
+  AndGate g("g");
+  TestableComponent a, b;
+  a.value = False; b.value = True;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), False, "False AND True = False");
+}
+
+Test(and_gate, output_false_and_false) {
+  AndGate g("g");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), False, "False AND False = False");
+}
+
+Test(and_gate, output_undefined_absorbs_false) {
+  AndGate g("g");
+  TestableComponent a, b;
+  a.value = Undefined; b.value = False;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), False, "Undefined AND False = False (absorbing)");
+}
+
+Test(and_gate, output_undefined_and_true_is_undefined) {
+  AndGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = Undefined;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), Undefined, "True AND Undefined = Undefined");
+}
+
+Test(and_gate, input_pin_returns_linked_value) {
+  AndGate g("g");
+  TestableComponent src;
+  src.value = True;
+  g.setLink(1, src, 1);
+  cr_assert_eq(g.compute(1), True, "compute(1) should return the linked value");
+}
+
+Test(and_gate, simulate_updates_tick) {
+  AndGate g("g");
+  g.simulate(42);
+  cr_assert_str_eq(g.getName().c_str(), "g", "Name should still be accessible after simulate");
+}
+
+Test(or_gate, unlinked_output_returns_undefined) {
+  OrGate g("g");
+  cr_assert_eq(g.compute(3), Undefined, "Unlinked OrGate output should be Undefined");
+}
+
+Test(or_gate, invalid_pin_throws) {
+  OrGate g("g");
+  bool thrown = false;
+  try { g.compute(0); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(0) should throw");
+  thrown = false;
+  try { g.compute(4); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(4) should throw");
+}
+
+Test(or_gate, output_true_or_false) {
+  OrGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = False;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), True, "True OR False = True");
+}
+
+Test(or_gate, output_false_or_false) {
+  OrGate g("g");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), False, "False OR False = False");
+}
+
+Test(or_gate, output_true_absorbs_undefined) {
+  OrGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = Undefined;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), True, "True OR Undefined = True (absorbing)");
+}
+
+Test(or_gate, output_false_or_undefined_is_undefined) {
+  OrGate g("g");
+  TestableComponent a, b;
+  a.value = False; b.value = Undefined;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), Undefined, "False OR Undefined = Undefined");
+}
+
+Test(xor_gate, unlinked_output_returns_undefined) {
+  XorGate g("g");
+  cr_assert_eq(g.compute(3), Undefined, "Unlinked XorGate output should be Undefined");
+}
+
+Test(xor_gate, invalid_pin_throws) {
+  XorGate g("g");
+  bool thrown = false;
+  try { g.compute(0); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(0) should throw");
+  thrown = false;
+  try { g.compute(4); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(4) should throw");
+}
+
+Test(xor_gate, output_true_xor_true) {
+  XorGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), False, "True XOR True = False");
+}
+
+Test(xor_gate, output_true_xor_false) {
+  XorGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = False;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), True, "True XOR False = True");
+}
+
+Test(xor_gate, output_false_xor_false) {
+  XorGate g("g");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), False, "False XOR False = False");
+}
+
+Test(xor_gate, undefined_input_yields_undefined) {
+  XorGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = Undefined;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), Undefined, "True XOR Undefined = Undefined");
+}
+
+Test(not_gate, unlinked_pins_return_undefined) {
+  NotGate g("g");
+  cr_assert_eq(g.compute(1), Undefined, "Unlinked pin 1 should be Undefined");
+  cr_assert_eq(g.compute(2), Undefined, "Unlinked pin 2 (output) should be Undefined");
+}
+
+Test(not_gate, invalid_pin_throws) {
+  NotGate g("g");
+  bool thrown = false;
+  try { g.compute(0); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(0) should throw");
+  thrown = false;
+  try { g.compute(3); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(3) should throw");
+}
+
+Test(not_gate, output_not_true) {
+  NotGate g("g");
+  TestableComponent src;
+  src.value = True;
+  g.setLink(1, src, 1);
+  cr_assert_eq(g.compute(2), False, "NOT True = False");
+}
+
+Test(not_gate, output_not_false) {
+  NotGate g("g");
+  TestableComponent src;
+  src.value = False;
+  g.setLink(1, src, 1);
+  cr_assert_eq(g.compute(2), True, "NOT False = True");
+}
+
+Test(not_gate, output_not_undefined) {
+  NotGate g("g");
+  TestableComponent src;
+  src.value = Undefined;
+  g.setLink(1, src, 1);
+  cr_assert_eq(g.compute(2), Undefined, "NOT Undefined = Undefined");
+}
+
+Test(not_gate, input_pin_returns_linked_value) {
+  NotGate g("g");
+  TestableComponent src;
+  src.value = False;
+  g.setLink(1, src, 1);
+  cr_assert_eq(g.compute(1), False, "compute(1) should return the linked input value");
 }
