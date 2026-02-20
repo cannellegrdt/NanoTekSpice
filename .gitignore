@@ -49,3 +49,6 @@ todo.md
 nanotekspice
 *.nts
 *.txt
+*.gcda
+*.gcno
+unit_tests
