@@ -27,9 +27,7 @@ void Parser::advance() const {
   }
 }
 
-Token Parser::peek() const {
-  return _currentToken;
-}
+Token Parser::peek() const { return _currentToken; }
 
 Token Parser::eat(TokenType expectedType) const {
   if (_currentToken.type != expectedType) {
@@ -181,11 +179,7 @@ void Parser::parseChipsetLine(Circuit &circuit) const {
   std::string type = typeToken.value;
   std::string name = nameToken.value;
 
-  std::unique_ptr<IComponent> component = _factory.createComponent(type);
-
-  if (AComponent *acomp = dynamic_cast<AComponent *>(component.get())) {
-    acomp->setName(name);
-  }
+  std::unique_ptr<IComponent> component = _factory.createComponent(type, name);
 
   circuit.addComponent(name, std::move(component));
 

@@ -174,7 +174,7 @@ struct TestFactory : IComponentFactory {
   }
 };
 
-} // namespace
+}
 
 Test(icomponent, can_derive_and_use_interface) {
   DummyComponent comp;

@@ -12,11 +12,12 @@
 
 namespace nts {
 
-
-    class StubFactory : public IComponentFactory {
-    public:
-        std::unique_ptr<IComponent> createComponent(const std::string &type) const override;
-    };
+class StubFactory : public IComponentFactory {
+public:
+  std::unique_ptr<IComponent>
+  createComponent(const std::string &type,
+                  const std::string &name) const override;
+};
 
 }
 

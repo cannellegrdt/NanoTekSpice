@@ -94,4 +94,4 @@ void Shell::cmdSetInput(const std::string &line) {
   _circuit.setInputValue(name, value);
 }
 
-} // namespace nts
+}
