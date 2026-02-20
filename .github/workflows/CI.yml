@@ -1,0 +1,15 @@
+name: nanotekspice CI
+
+on:
+  push:
+    branches: ["*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make
+        run: make
+      - name: Make unit_tests
+        run: make unit_tests
