@@ -17,6 +17,7 @@ jobs:
 
   unit_tests:
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
@@ -26,6 +27,7 @@ jobs:
   
   lint:
     runs-on: ubuntu-latest
+    needs: unit_tests
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
@@ -35,6 +37,7 @@ jobs:
   
   memory_check:
     runs-on: ubuntu-latest
+    needs: lint
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
