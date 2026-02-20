@@ -45,6 +45,10 @@
 #include "nts/components/C4512.hpp"
 #include "nts/components/C4514.hpp"
 #include "nts/components/C4801.hpp"
+#include "nts/components/Logger.hpp"
+#include <cstdio>
+#include <fstream>
+#include <vector>
 
 
 using namespace nts;
@@ -2259,4 +2263,113 @@ Test(c4801, read_unwritten_returns_zero) {
     for (auto p : dataPins)
         cr_assert_eq(chip.compute(p), False,
             "Data pin %zu must be 0 for unwritten address", p);
+}
+
+static std::vector<unsigned char> readLogFile()
+{
+    std::ifstream f("./log.bin", std::ios::binary);
+    return std::vector<unsigned char>(
+        std::istreambuf_iterator<char>(f),
+        std::istreambuf_iterator<char>());
+}
+
+Test(logger, invalid_pin_zero_throws) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    bool threw = false;
+    try { logger.compute(0); } catch (const NtsException &) { threw = true; }
+    cr_assert(threw, "compute(0) must throw NtsException");
+}
+
+Test(logger, invalid_pin_eleven_throws) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    bool threw = false;
+    try { logger.compute(11); } catch (const NtsException &) { threw = true; }
+    cr_assert(threw, "compute(11) must throw NtsException");
+}
+
+Test(logger, compute_valid_pin_returns_link) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *d0 = wirePin(logger, 1); d0->value = True;
+    cr_assert_eq(logger.compute(1), True, "compute(1) must return the linked value");
+}
+
+Test(logger, no_write_without_rising_edge) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *clk = wirePin(logger, 9);  clk->value = False;
+    auto *inh = wirePin(logger, 10); inh->value = False;
+    for (std::size_t i = 1; i <= 8; i++) { auto *d = wirePin(logger, i); d->value = True; }
+
+    logger.simulate(1);
+
+    auto data = readLogFile();
+    cr_assert_eq(data.size(), 0u, "No byte should be written when clock never rises");
+}
+
+Test(logger, write_on_rising_edge_byte_d0) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *clk = wirePin(logger, 9);  clk->value = False;
+    auto *inh = wirePin(logger, 10); inh->value = False;
+    auto *d0 = wirePin(logger, 1); d0->value = True;
+    for (std::size_t i = 2; i <= 8; i++) { auto *d = wirePin(logger, i); d->value = False; }
+
+    logger.simulate(1);
+    clk->value = True;
+    logger.simulate(2);
+
+    auto data = readLogFile();
+    cr_assert_eq(data.size(), 1u, "Exactly one byte should be written on rising edge");
+    cr_assert_eq(data[0], (unsigned char)0x01, "Written byte should be 0x01 (D0 set)");
+}
+
+Test(logger, no_write_when_inhibit_true) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *clk = wirePin(logger, 9);  clk->value = False;
+    auto *inh = wirePin(logger, 10); inh->value = True;
+    for (std::size_t i = 1; i <= 8; i++) { auto *d = wirePin(logger, i); d->value = True; }
+
+    logger.simulate(1);
+    clk->value = True;
+    logger.simulate(2);
+
+    auto data = readLogFile();
+    cr_assert_eq(data.size(), 0u, "No byte should be written when inhibit is True");
+}
+
+Test(logger, byte_assembly_d7_msb) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *clk = wirePin(logger, 9);  clk->value = False;
+    auto *inh = wirePin(logger, 10); inh->value = False;
+    for (std::size_t i = 1; i <= 7; i++) { auto *d = wirePin(logger, i); d->value = False; }
+    auto *d7 = wirePin(logger, 8); d7->value = True;
+
+    logger.simulate(1);
+    clk->value = True;
+    logger.simulate(2);
+
+    auto data = readLogFile();
+    cr_assert_eq(data.size(), 1u, "One byte should be written");
+    cr_assert_eq(data[0], (unsigned char)0x80, "D7 set only should give byte 0x80");
+}
+
+Test(logger, no_double_write_on_sustained_clock_high) {
+    std::remove("./log.bin");
+    Logger logger("logger");
+    auto *clk = wirePin(logger, 9);  clk->value = False;
+    auto *inh = wirePin(logger, 10); inh->value = False;
+    for (std::size_t i = 1; i <= 8; i++) { auto *d = wirePin(logger, i); d->value = False; }
+
+    logger.simulate(1);
+    clk->value = True;
+    logger.simulate(2);
+    logger.simulate(3);
+
+    auto data = readLogFile();
+    cr_assert_eq(data.size(), 1u, "Only one byte written for sustained high clock");
 }
