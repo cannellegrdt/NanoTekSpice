@@ -20,6 +20,11 @@
 #include "nts/Shell.hpp"
 #include "nts/Tristate.hpp"
 #include "nts/TristateLogic.hpp"
+#include "nts/components/Clock.hpp"
+#include "nts/components/False.hpp"
+#include "nts/components/Input.hpp"
+#include "nts/components/Output.hpp"
+#include "nts/components/True.hpp"
 
 using namespace nts;
 
@@ -169,7 +174,7 @@ struct TestableComponent : AComponent {
 
 struct TestFactory : IComponentFactory {
   std::unique_ptr<IComponent>
-  createComponent(const std::string &) const override {
+  createComponent(const std::string &, const std::string &) const override {
     return std::make_unique<TestableComponent>();
   }
 };
@@ -654,4 +659,188 @@ Test(shell, set_input_command_parsing, .init = cr_redirect_stdout) {
 
   cr_assert_eq(ptr->getPin(1), True,
                "Shell should set the input value correctly");
+}
+
+// ============================================================
+// Special Components Tests (Part 4)
+// ============================================================
+
+// --- Input ---
+
+Test(input, initial_value_is_undefined) {
+  Input inp("inp");
+  cr_assert_eq(inp.compute(1), Undefined,
+               "Input should start with Undefined at pin 1");
+}
+
+Test(input, set_value_not_applied_before_simulate) {
+  Input inp("inp");
+  inp.setValue(True);
+  cr_assert_eq(inp.compute(1), Undefined,
+               "setValue() should not immediately update pin 1");
+}
+
+Test(input, simulate_applies_true) {
+  Input inp("inp");
+  inp.setValue(True);
+  inp.simulate(1);
+  cr_assert_eq(inp.compute(1), True,
+               "simulate() should apply True to pin 1");
+}
+
+Test(input, simulate_applies_false) {
+  Input inp("inp");
+  inp.setValue(False);
+  inp.simulate(1);
+  cr_assert_eq(inp.compute(1), False,
+               "simulate() should apply False to pin 1");
+}
+
+Test(input, simulate_applies_undefined) {
+  Input inp("inp");
+  inp.setValue(True);
+  inp.simulate(1);
+  inp.setValue(Undefined);
+  inp.simulate(2);
+  cr_assert_eq(inp.compute(1), Undefined,
+               "simulate() should apply Undefined if set via setValue()");
+}
+
+Test(input, compute_invalid_pin_throws) {
+  Input inp("inp");
+  bool thrown = false;
+  try {
+    inp.compute(2);
+  } catch (const NtsException &) {
+    thrown = true;
+  }
+  cr_assert(thrown, "compute() with pin != 1 should throw NtsException");
+}
+
+// --- Output ---
+
+Test(output, compute_unlinked_returns_undefined) {
+  Output out("out");
+  cr_assert_eq(out.compute(1), Undefined,
+               "Unlinked Output should return Undefined");
+}
+
+Test(output, compute_reads_linked_component) {
+  Output out("out");
+  TestableComponent source;
+  source.value = True;
+  out.setLink(1, source, 1);
+  cr_assert_eq(out.compute(1), True,
+               "Output should return the linked component's value");
+}
+
+Test(output, compute_invalid_pin_throws) {
+  Output out("out");
+  bool thrown = false;
+  try {
+    out.compute(2);
+  } catch (const NtsException &) {
+    thrown = true;
+  }
+  cr_assert(thrown, "compute() with pin != 1 should throw NtsException");
+}
+
+// --- TrueComp ---
+
+Test(true_comp, compute_always_returns_true) {
+  TrueComp tc("vcc");
+  cr_assert_eq(tc.compute(1), True,
+               "TrueComp should always return True at pin 1");
+}
+
+Test(true_comp, simulate_does_not_change_value) {
+  TrueComp tc("vcc");
+  tc.simulate(1);
+  cr_assert_eq(tc.compute(1), True,
+               "simulate() should not affect TrueComp's output");
+}
+
+Test(true_comp, compute_invalid_pin_throws) {
+  TrueComp tc("vcc");
+  bool thrown = false;
+  try {
+    tc.compute(2);
+  } catch (const NtsException &) {
+    thrown = true;
+  }
+  cr_assert(thrown, "compute() with pin != 1 should throw NtsException");
+}
+
+// --- FalseComp ---
+
+Test(false_comp, compute_always_returns_false) {
+  FalseComp fc("gnd");
+  cr_assert_eq(fc.compute(1), False,
+               "FalseComp should always return False at pin 1");
+}
+
+Test(false_comp, simulate_does_not_change_value) {
+  FalseComp fc("gnd");
+  fc.simulate(1);
+  cr_assert_eq(fc.compute(1), False,
+               "simulate() should not affect FalseComp's output");
+}
+
+Test(false_comp, compute_invalid_pin_throws) {
+  FalseComp fc("gnd");
+  bool thrown = false;
+  try {
+    fc.compute(2);
+  } catch (const NtsException &) {
+    thrown = true;
+  }
+  cr_assert(thrown, "compute() with pin != 1 should throw NtsException");
+}
+
+// --- Clock ---
+
+Test(clock, initial_value_is_undefined) {
+  Clock clk("cl");
+  cr_assert_eq(clk.compute(1), Undefined,
+               "Clock should start with Undefined before any simulate");
+}
+
+Test(clock, undefined_stays_undefined_after_simulate) {
+  Clock clk("cl");
+  clk.simulate(1);
+  cr_assert_eq(clk.compute(1), Undefined,
+               "Undefined clock should remain Undefined after simulate");
+  clk.simulate(2);
+  cr_assert_eq(clk.compute(1), Undefined,
+               "Undefined clock should remain Undefined after multiple simulates");
+}
+
+Test(clock, toggles_from_false) {
+  Clock clk("cl");
+  clk.setValue(False);
+  clk.simulate(1);
+  cr_assert_eq(clk.compute(1), False, "Tick 1: clock should be False");
+  clk.simulate(2);
+  cr_assert_eq(clk.compute(1), True,  "Tick 2: clock should toggle to True");
+  clk.simulate(3);
+  cr_assert_eq(clk.compute(1), False, "Tick 3: clock should toggle back to False");
+}
+
+Test(clock, toggles_from_true) {
+  Clock clk("cl");
+  clk.setValue(True);
+  clk.simulate(1);
+  cr_assert_eq(clk.compute(1), True,  "Tick 1: clock should be True");
+  clk.simulate(2);
+  cr_assert_eq(clk.compute(1), False, "Tick 2: clock should toggle to False");
+}
+
+Test(clock, set_value_overrides_toggle) {
+  Clock clk("cl");
+  clk.setValue(False);
+  clk.simulate(1); // cl=False, _nextValue becomes True
+  clk.setValue(False); // override _nextValue back to False
+  clk.simulate(2); // cl=False again
+  cr_assert_eq(clk.compute(1), False,
+               "setValue() should override the automatic toggle");
 }
