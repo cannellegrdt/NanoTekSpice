@@ -49,7 +49,7 @@ namespace nts {
         void setValue(Tristate val);
 
     protected:
-        Tristate _nextValue; ///< Pending value applied to pin 1 on the next simulate().
+        Tristate _nextValue;
     };
 
 }
