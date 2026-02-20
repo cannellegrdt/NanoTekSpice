@@ -38,7 +38,7 @@ tests_run:	unit_tests
 	./unit_tests
 	$(MAKE) functional_tests
 
-coverage:	tests_run
+coverage:	unit_tests
 	gcovr --exclude tests/
 	gcovr --exclude tests/ --branches
 
