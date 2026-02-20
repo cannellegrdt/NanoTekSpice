@@ -24,11 +24,19 @@
 #include "nts/components/Clock.hpp"
 #include "nts/components/False.hpp"
 #include "nts/components/Input.hpp"
+#include "nts/components/NandGate.hpp"
+#include "nts/components/NorGate.hpp"
 #include "nts/components/NotGate.hpp"
 #include "nts/components/OrGate.hpp"
 #include "nts/components/Output.hpp"
 #include "nts/components/True.hpp"
 #include "nts/components/XorGate.hpp"
+#include "nts/components/C4001.hpp"
+#include "nts/components/C4011.hpp"
+#include "nts/components/C4030.hpp"
+#include "nts/components/C4069.hpp"
+#include "nts/components/C4071.hpp"
+#include "nts/components/C4081.hpp"
 
 using namespace nts;
 
@@ -1059,4 +1067,547 @@ Test(not_gate, input_pin_returns_linked_value) {
   src.value = False;
   g.setLink(1, src, 1);
   cr_assert_eq(g.compute(1), False, "compute(1) should return the linked input value");
+}
+
+Test(nand_gate, unlinked_output_returns_undefined) {
+  NandGate g("g");
+  cr_assert_eq(g.compute(3), Undefined,
+               "Unlinked NandGate output should be Undefined");
+}
+
+Test(nand_gate, invalid_pin_throws) {
+  NandGate g("g");
+  bool thrown = false;
+  try { g.compute(0); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(0) should throw");
+  thrown = false;
+  try { g.compute(4); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(4) should throw");
+}
+
+Test(nand_gate, output_true_nand_true) {
+  NandGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), False, "True NAND True = False");
+}
+
+Test(nand_gate, output_false_nand_false) {
+  NandGate g("g");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), True, "False NAND False = True");
+}
+
+Test(nand_gate, output_true_nand_false) {
+  NandGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = False;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), True, "True NAND False = True");
+}
+
+Test(nand_gate, false_absorbs_undefined) {
+  NandGate g("g");
+  TestableComponent a, b;
+  a.value = False; b.value = Undefined;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), True, "False NAND Undefined = True (absorbing)");
+}
+
+Test(nand_gate, true_nand_undefined_is_undefined) {
+  NandGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = Undefined;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), Undefined, "True NAND Undefined = Undefined");
+}
+
+Test(nand_gate, input_pin_returns_linked_value) {
+  NandGate g("g");
+  TestableComponent src;
+  src.value = True;
+  g.setLink(1, src, 1);
+  cr_assert_eq(g.compute(1), True, "compute(1) should return the linked value");
+}
+
+Test(nor_gate, unlinked_output_returns_undefined) {
+  NorGate g("g");
+  cr_assert_eq(g.compute(3), Undefined,
+               "Unlinked NorGate output should be Undefined");
+}
+
+Test(nor_gate, invalid_pin_throws) {
+  NorGate g("g");
+  bool thrown = false;
+  try { g.compute(0); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(0) should throw");
+  thrown = false;
+  try { g.compute(4); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "compute(4) should throw");
+}
+
+Test(nor_gate, output_false_nor_false) {
+  NorGate g("g");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), True, "False NOR False = True");
+}
+
+Test(nor_gate, output_true_nor_false) {
+  NorGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = False;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), False, "True NOR False = False");
+}
+
+Test(nor_gate, output_true_nor_true) {
+  NorGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), False, "True NOR True = False");
+}
+
+Test(nor_gate, true_absorbs_undefined) {
+  NorGate g("g");
+  TestableComponent a, b;
+  a.value = True; b.value = Undefined;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), False, "True NOR Undefined = False (absorbing)");
+}
+
+Test(nor_gate, false_nor_undefined_is_undefined) {
+  NorGate g("g");
+  TestableComponent a, b;
+  a.value = False; b.value = Undefined;
+  g.setLink(1, a, 1);
+  g.setLink(2, b, 1);
+  cr_assert_eq(g.compute(3), Undefined, "False NOR Undefined = Undefined");
+}
+
+Test(c4001, power_pins_throw) {
+  C4001 chip("chip");
+  bool t7 = false, t14 = false;
+  try { chip.compute(7);  } catch (const NtsException &) { t7  = true; }
+  try { chip.compute(14); } catch (const NtsException &) { t14 = true; }
+  cr_assert(t7,  "Pin 7 (VSS) must throw");
+  cr_assert(t14, "Pin 14 (VDD) must throw");
+}
+
+Test(c4001, invalid_pin_throws) {
+  C4001 chip("chip");
+  bool thrown = false;
+  try { chip.compute(0); } catch (const NtsException &) { thrown = true; }
+  cr_assert(thrown, "Pin 0 must throw");
+}
+
+Test(c4001, gate1_false_nor_false) {
+  C4001 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), True, "Gate1 (pins 1,2->3): F NOR F = T");
+}
+
+Test(c4001, gate1_true_nor_false) {
+  C4001 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = False;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), False, "Gate1 (pins 1,2->3): T NOR F = F");
+}
+
+Test(c4001, gate2_nor) {
+  C4001 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  chip.setLink(5, a, 1);
+  chip.setLink(6, b, 1);
+  cr_assert_eq(chip.compute(4), True, "Gate2 (pins 5,6->4): F NOR F = T");
+}
+
+Test(c4001, gate3_nor) {
+  C4001 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  chip.setLink(8, a, 1);
+  chip.setLink(9, b, 1);
+  cr_assert_eq(chip.compute(10), False, "Gate3 (pins 8,9->10): T NOR T = F");
+}
+
+Test(c4001, gate4_nor) {
+  C4001 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  chip.setLink(12, a, 1);
+  chip.setLink(13, b, 1);
+  cr_assert_eq(chip.compute(11), True, "Gate4 (pins 12,13->11): F NOR F = T");
+}
+
+Test(c4001, simulate_no_crash) {
+  C4001 chip("chip");
+  chip.simulate(1);
+  cr_assert(true, "simulate() should not throw");
+}
+
+Test(c4011, power_pins_throw) {
+  C4011 chip("chip");
+  bool t7 = false, t14 = false;
+  try { chip.compute(7);  } catch (const NtsException &) { t7  = true; }
+  try { chip.compute(14); } catch (const NtsException &) { t14 = true; }
+  cr_assert(t7,  "Pin 7 (VSS) must throw");
+  cr_assert(t14, "Pin 14 (VDD) must throw");
+}
+
+Test(c4011, gate1_true_nand_true) {
+  C4011 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), False, "Gate1 (pins 1,2->3): T NAND T = F");
+}
+
+Test(c4011, gate1_false_nand_false) {
+  C4011 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), True, "Gate1 (pins 1,2->3): F NAND F = T");
+}
+
+Test(c4011, gate2_nand) {
+  C4011 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = False;
+  chip.setLink(5, a, 1);
+  chip.setLink(6, b, 1);
+  cr_assert_eq(chip.compute(4), True, "Gate2 (pins 5,6->4): T NAND F = T");
+}
+
+Test(c4011, gate3_nand) {
+  C4011 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  chip.setLink(8, a, 1);
+  chip.setLink(9, b, 1);
+  cr_assert_eq(chip.compute(10), False, "Gate3 (pins 8,9->10): T NAND T = F");
+}
+
+Test(c4011, gate4_nand) {
+  C4011 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  chip.setLink(12, a, 1);
+  chip.setLink(13, b, 1);
+  cr_assert_eq(chip.compute(11), True, "Gate4 (pins 12,13->11): F NAND F = T");
+}
+
+Test(c4011, simulate_no_crash) {
+  C4011 chip("chip");
+  chip.simulate(1);
+  cr_assert(true, "simulate() should not throw");
+}
+
+Test(c4030, power_pins_throw) {
+  C4030 chip("chip");
+  bool t7 = false, t14 = false;
+  try { chip.compute(7);  } catch (const NtsException &) { t7  = true; }
+  try { chip.compute(14); } catch (const NtsException &) { t14 = true; }
+  cr_assert(t7,  "Pin 7 (VSS) must throw");
+  cr_assert(t14, "Pin 14 (VDD) must throw");
+}
+
+Test(c4030, gate1_true_xor_true) {
+  C4030 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), False, "Gate1 (pins 1,2->3): T XOR T = F");
+}
+
+Test(c4030, gate1_true_xor_false) {
+  C4030 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = False;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), True, "Gate1 (pins 1,2->3): T XOR F = T");
+}
+
+Test(c4030, gate1_false_xor_false) {
+  C4030 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), False, "Gate1 (pins 1,2->3): F XOR F = F");
+}
+
+Test(c4030, gate2_xor) {
+  C4030 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = False;
+  chip.setLink(5, a, 1);
+  chip.setLink(6, b, 1);
+  cr_assert_eq(chip.compute(4), True, "Gate2 (pins 5,6->4): T XOR F = T");
+}
+
+Test(c4030, gate3_xor) {
+  C4030 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  chip.setLink(8, a, 1);
+  chip.setLink(9, b, 1);
+  cr_assert_eq(chip.compute(10), False, "Gate3 (pins 8,9->10): F XOR F = F");
+}
+
+Test(c4030, gate4_xor) {
+  C4030 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  chip.setLink(12, a, 1);
+  chip.setLink(13, b, 1);
+  cr_assert_eq(chip.compute(11), False, "Gate4 (pins 12,13->11): T XOR T = F");
+}
+
+Test(c4030, simulate_no_crash) {
+  C4030 chip("chip");
+  chip.simulate(1);
+  cr_assert(true, "simulate() should not throw");
+}
+
+Test(c4069, power_pins_throw) {
+  C4069 chip("chip");
+  bool t7 = false, t14 = false;
+  try { chip.compute(7);  } catch (const NtsException &) { t7  = true; }
+  try { chip.compute(14); } catch (const NtsException &) { t14 = true; }
+  cr_assert(t7,  "Pin 7 (VSS) must throw");
+  cr_assert(t14, "Pin 14 (VDD) must throw");
+}
+
+Test(c4069, gate1_not_true) {
+  C4069 chip("chip");
+  TestableComponent src;
+  src.value = True;
+  chip.setLink(1, src, 1);
+  cr_assert_eq(chip.compute(2), False, "Gate1 (pin 1->2): NOT True = False");
+}
+
+Test(c4069, gate1_not_false) {
+  C4069 chip("chip");
+  TestableComponent src;
+  src.value = False;
+  chip.setLink(1, src, 1);
+  cr_assert_eq(chip.compute(2), True, "Gate1 (pin 1->2): NOT False = True");
+}
+
+Test(c4069, gate1_not_undefined) {
+  C4069 chip("chip");
+  TestableComponent src;
+  src.value = Undefined;
+  chip.setLink(1, src, 1);
+  cr_assert_eq(chip.compute(2), Undefined, "Gate1 (pin 1->2): NOT Undefined = Undefined");
+}
+
+Test(c4069, gate2_not) {
+  C4069 chip("chip");
+  TestableComponent src;
+  src.value = True;
+  chip.setLink(3, src, 1);
+  cr_assert_eq(chip.compute(4), False, "Gate2 (pin 3->4): NOT True = False");
+}
+
+Test(c4069, gate3_not) {
+  C4069 chip("chip");
+  TestableComponent src;
+  src.value = False;
+  chip.setLink(5, src, 1);
+  cr_assert_eq(chip.compute(6), True, "Gate3 (pin 5->6): NOT False = True");
+}
+
+Test(c4069, gate4_not) {
+  C4069 chip("chip");
+  TestableComponent src;
+  src.value = True;
+  chip.setLink(9, src, 1);
+  cr_assert_eq(chip.compute(8), False, "Gate4 (pin 9->8): NOT True = False");
+}
+
+Test(c4069, gate5_not) {
+  C4069 chip("chip");
+  TestableComponent src;
+  src.value = False;
+  chip.setLink(11, src, 1);
+  cr_assert_eq(chip.compute(10), True, "Gate5 (pin 11->10): NOT False = True");
+}
+
+Test(c4069, gate6_not) {
+  C4069 chip("chip");
+  TestableComponent src;
+  src.value = True;
+  chip.setLink(13, src, 1);
+  cr_assert_eq(chip.compute(12), False, "Gate6 (pin 13->12): NOT True = False");
+}
+
+Test(c4069, simulate_no_crash) {
+  C4069 chip("chip");
+  chip.simulate(1);
+  cr_assert(true, "simulate() should not throw");
+}
+
+Test(c4071, power_pins_throw) {
+  C4071 chip("chip");
+  bool t7 = false, t14 = false;
+  try { chip.compute(7);  } catch (const NtsException &) { t7  = true; }
+  try { chip.compute(14); } catch (const NtsException &) { t14 = true; }
+  cr_assert(t7,  "Pin 7 (VSS) must throw");
+  cr_assert(t14, "Pin 14 (VDD) must throw");
+}
+
+Test(c4071, gate1_true_or_false) {
+  C4071 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = False;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), True, "Gate1 (pins 1,2->3): T OR F = T");
+}
+
+Test(c4071, gate1_false_or_false) {
+  C4071 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), False, "Gate1 (pins 1,2->3): F OR F = F");
+}
+
+Test(c4071, gate1_true_or_true) {
+  C4071 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), True, "Gate1 (pins 1,2->3): T OR T = T");
+}
+
+Test(c4071, gate2_or) {
+  C4071 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  chip.setLink(5, a, 1);
+  chip.setLink(6, b, 1);
+  cr_assert_eq(chip.compute(4), True, "Gate2 (pins 5,6->4): T OR T = T");
+}
+
+Test(c4071, gate3_or) {
+  C4071 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = True;
+  chip.setLink(8, a, 1);
+  chip.setLink(9, b, 1);
+  cr_assert_eq(chip.compute(10), True, "Gate3 (pins 8,9->10): F OR T = T");
+}
+
+Test(c4071, gate4_or) {
+  C4071 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  chip.setLink(12, a, 1);
+  chip.setLink(13, b, 1);
+  cr_assert_eq(chip.compute(11), False, "Gate4 (pins 12,13->11): F OR F = F");
+}
+
+Test(c4071, simulate_no_crash) {
+  C4071 chip("chip");
+  chip.simulate(1);
+  cr_assert(true, "simulate() should not throw");
+}
+
+Test(c4081, power_pins_throw) {
+  C4081 chip("chip");
+  bool t7 = false, t14 = false;
+  try { chip.compute(7);  } catch (const NtsException &) { t7  = true; }
+  try { chip.compute(14); } catch (const NtsException &) { t14 = true; }
+  cr_assert(t7,  "Pin 7 (VSS) must throw");
+  cr_assert(t14, "Pin 14 (VDD) must throw");
+}
+
+Test(c4081, gate1_true_and_true) {
+  C4081 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), True, "Gate1 (pins 1,2->3): T AND T = T");
+}
+
+Test(c4081, gate1_true_and_false) {
+  C4081 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = False;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), False, "Gate1 (pins 1,2->3): T AND F = F");
+}
+
+Test(c4081, gate1_false_and_false) {
+  C4081 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = False;
+  chip.setLink(1, a, 1);
+  chip.setLink(2, b, 1);
+  cr_assert_eq(chip.compute(3), False, "Gate1 (pins 1,2->3): F AND F = F");
+}
+
+Test(c4081, gate2_and) {
+  C4081 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  chip.setLink(5, a, 1);
+  chip.setLink(6, b, 1);
+  cr_assert_eq(chip.compute(4), True, "Gate2 (pins 5,6->4): T AND T = T");
+}
+
+Test(c4081, gate3_and) {
+  C4081 chip("chip");
+  TestableComponent a, b;
+  a.value = False; b.value = True;
+  chip.setLink(8, a, 1);
+  chip.setLink(9, b, 1);
+  cr_assert_eq(chip.compute(10), False, "Gate3 (pins 8,9->10): F AND T = F");
+}
+
+Test(c4081, gate4_and) {
+  C4081 chip("chip");
+  TestableComponent a, b;
+  a.value = True; b.value = True;
+  chip.setLink(12, a, 1);
+  chip.setLink(13, b, 1);
+  cr_assert_eq(chip.compute(11), True, "Gate4 (pins 12,13->11): T AND T = T");
+}
+
+Test(c4081, simulate_no_crash) {
+  C4081 chip("chip");
+  chip.simulate(1);
+  cr_assert(true, "simulate() should not throw");
 }
