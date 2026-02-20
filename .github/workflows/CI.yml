@@ -23,8 +23,6 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libcriterion-dev
       - name: Build unit tests
         run: make unit_tests
-      - name: Run unit tests
-        run: ./unit_tests
   
   lint:
     runs-on: ubuntu-latest
@@ -40,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cppcheck valgrind
+        run: sudo apt-get update && sudo apt-get install -y cppcheck valgrind && sudo apt-get install -y libcriterion-dev
       - name: Build unit tests
         run: make unit_tests
       - name: Run unit tests
