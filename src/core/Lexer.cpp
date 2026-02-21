@@ -21,9 +21,7 @@ char Lexer::peekChar() const {
 }
 
 char Lexer::advanceChar() {
-  if (_pos >= _input.length()) {
-    return '\0';
-  }
+  if (_pos >= _input.length()) return '\0';
   char c = _input[_pos];
   _pos++;
   if (c == '\n') {
