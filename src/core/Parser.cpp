@@ -187,8 +187,10 @@ void Parser::parseChipsetLine(Circuit &circuit) const {
     circuit.addInputName(name);
   else if (type == "output")
     circuit.addOutputName(name);
-  else if (type == "clock")
+  else if (type == "clock") {
     circuit.addClockName(name);
+    circuit.addInputName(name);
+  }
 }
 
 void Parser::parseLinkLine(Circuit &circuit) const {

@@ -48,7 +48,6 @@
 #include "nts/components/C4514.hpp"
 #include "nts/components/C4801.hpp"
 #include "nts/components/Logger.hpp"
-#include "nts/StubFactory.hpp"
 #include <chrono>
 #include <csignal>
 #include <cstdio>
@@ -2863,25 +2862,6 @@ Test(component_factory, unknown_type_throws) {
     cr_assert(thrown, "Unknown component type should throw NtsException");
 }
 
-Test(stub_factory, creates_non_null_component, .init = cr_redirect_stdout) {
-    StubFactory factory;
-    auto comp = factory.createComponent("mytype", "myname");
-    cr_assert_not_null(comp.get());
-}
-
-Test(stub_factory, compute_returns_undefined, .init = cr_redirect_stdout) {
-    StubFactory factory;
-    auto comp = factory.createComponent("mytype", "myname");
-    cr_assert_eq(comp->compute(1), Undefined);
-}
-
-Test(stub_factory, prints_type_to_stdout, .init = cr_redirect_stdout) {
-    StubFactory factory;
-    auto comp = factory.createComponent("mytype", "myname");
-    (void)comp;
-    cr_assert_stdout_eq_str("mytype\n");
-}
-
 Test(shell, eof_exits_cleanly, .init = cr_redirect_stdout) {
     Circuit c;
     Shell shell(c);
@@ -3167,13 +3147,6 @@ Test(c2716, loads_rom_file_padding) {
     Tristate r10 = chip.compute(10);
     cr_assert(r9  == True || r9  == False);
     cr_assert(r10 == True || r10 == False);
-}
-
-Test(stub_factory, simulate_no_crash, .init = cr_redirect_stdout) {
-    StubFactory factory;
-    auto comp = factory.createComponent("type", "name");
-    comp->simulate(1);
-    cr_assert(true, "StubComponent simulate() should not crash");
 }
 
 Test(or_gate, input_pin_returns_linked_value) {

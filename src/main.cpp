@@ -11,7 +11,7 @@
 #include "nts/Errors.hpp"
 #include "nts/Parser.hpp"
 #include "nts/Shell.hpp"
-#include "nts/StubFactory.hpp"
+#include "nts/ComponentFactory.hpp"
 
 int main(int argc, char **argv)
 {
@@ -21,7 +21,7 @@ int main(int argc, char **argv)
         return 84;
     }
     try {
-        nts::StubFactory factory;
+        nts::ComponentFactory factory;
         nts::Parser parser(factory);
         nts::Circuit circuit = parser.parse(argv[1]);
 
