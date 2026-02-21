@@ -48,8 +48,13 @@
 #include "nts/components/C4514.hpp"
 #include "nts/components/C4801.hpp"
 #include "nts/components/Logger.hpp"
+#include "nts/StubFactory.hpp"
+#include <chrono>
+#include <csignal>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
+#include <thread>
 #include <vector>
 
 
@@ -1341,6 +1346,13 @@ Test(c4011, simulate_no_crash) {
   cr_assert(true, "simulate() should not throw");
 }
 
+Test(c4011, invalid_pin_throws) {
+  C4011 chip("chip");
+  bool threw = false;
+  try { chip.compute(0); } catch (const NtsException &) { threw = true; }
+  cr_assert(threw, "Pin 0 must throw NtsException");
+}
+
 Test(c4030, power_pins_throw) {
   C4030 chip("chip");
   bool t7 = false, t14 = false;
@@ -1408,6 +1420,13 @@ Test(c4030, simulate_no_crash) {
   C4030 chip("chip");
   chip.simulate(1);
   cr_assert(true, "simulate() should not throw");
+}
+
+Test(c4030, invalid_pin_throws) {
+  C4030 chip("chip");
+  bool threw = false;
+  try { chip.compute(0); } catch (const NtsException &) { threw = true; }
+  cr_assert(threw, "Pin 0 must throw NtsException");
 }
 
 Test(c4069, power_pins_throw) {
@@ -1489,6 +1508,13 @@ Test(c4069, simulate_no_crash) {
   cr_assert(true, "simulate() should not throw");
 }
 
+Test(c4069, invalid_pin_throws) {
+  C4069 chip("chip");
+  bool threw = false;
+  try { chip.compute(0); } catch (const NtsException &) { threw = true; }
+  cr_assert(threw, "Pin 0 must throw NtsException");
+}
+
 Test(c4071, power_pins_throw) {
   C4071 chip("chip");
   bool t7 = false, t14 = false;
@@ -1558,6 +1584,13 @@ Test(c4071, simulate_no_crash) {
   cr_assert(true, "simulate() should not throw");
 }
 
+Test(c4071, invalid_pin_throws) {
+  C4071 chip("chip");
+  bool threw = false;
+  try { chip.compute(0); } catch (const NtsException &) { threw = true; }
+  cr_assert(threw, "Pin 0 must throw NtsException");
+}
+
 Test(c4081, power_pins_throw) {
   C4081 chip("chip");
   bool t7 = false, t14 = false;
@@ -1625,6 +1658,13 @@ Test(c4081, simulate_no_crash) {
   C4081 chip("chip");
   chip.simulate(1);
   cr_assert(true, "simulate() should not throw");
+}
+
+Test(c4081, invalid_pin_throws) {
+  C4081 chip("chip");
+  bool threw = false;
+  try { chip.compute(0); } catch (const NtsException &) { threw = true; }
+  cr_assert(threw, "Pin 0 must throw NtsException");
 }
 
 TestableComponent *wirePin(AComponent &chip, std::size_t chipPin)
@@ -1717,6 +1757,12 @@ Test(c4008, undefined_input_propagates) {
     cr_assert_eq(chip.compute(10), Undefined, "Sum0 must be Undefined with undefined inputs");
 }
 
+Test(c4008, input_pin_passthrough) {
+    C4008 chip("chip");
+    auto *src = wirePin(chip, 1); src->value = True;
+    cr_assert_eq(chip.compute(1), True, "Input pin 1 must return linked value");
+}
+
 Test(c4013, power_pins_throw) {
     C4013 chip("chip");
     bool t7 = false, t14 = false;
@@ -1803,6 +1849,45 @@ Test(c4013, ff2_independent_of_ff1) {
 
     cr_assert_eq(chip.compute(13), True, "FF2 Q must capture D=1");
     cr_assert_eq(chip.compute(1),  Undefined, "FF1 Q unaffected");
+}
+
+Test(c4013, ff2_set_forces_q) {
+    C4013 chip("chip");
+    auto *s2  = wirePin(chip,  8); s2->value  = True;
+    auto *r2  = wirePin(chip, 10); r2->value  = False;
+    auto *clk2 = wirePin(chip, 11); clk2->value = False;
+    auto *d2  = wirePin(chip,  9); d2->value  = False;
+
+    chip.simulate(1);
+
+    cr_assert_eq(chip.compute(13), True,  "FF2 Q must be 1 when Set");
+    cr_assert_eq(chip.compute(12), False, "FF2 Qbar must be 0 when Set");
+}
+
+Test(c4013, ff2_reset_clears_q) {
+    C4013 chip("chip");
+    auto *s2  = wirePin(chip,  8); s2->value  = False;
+    auto *r2  = wirePin(chip, 10); r2->value  = True;
+    auto *clk2 = wirePin(chip, 11); clk2->value = False;
+    auto *d2  = wirePin(chip,  9); d2->value  = True;
+
+    chip.simulate(1);
+
+    cr_assert_eq(chip.compute(13), False, "FF2 Q must be 0 when Reset");
+    cr_assert_eq(chip.compute(12), True,  "FF2 Qbar must be 1 when Reset");
+}
+
+Test(c4013, input_pin_passthrough) {
+    C4013 chip("chip");
+    auto *clk = wirePin(chip, 3); clk->value = True;
+    cr_assert_eq(chip.compute(3), True, "Input pin 3 must return linked value");
+}
+
+Test(c4013, invalid_pin_throws) {
+    C4013 chip("chip");
+    bool threw = false;
+    try { chip.compute(0); } catch (const NtsException &) { threw = true; }
+    cr_assert(threw, "Pin 0 must throw NtsException");
 }
 
 Test(c4017, power_pins_throw) {
@@ -1917,6 +2002,23 @@ Test(c4017, carry_out_high_for_counts_0_to_4) {
     }
 }
 
+Test(c4017, input_pin_passthrough) {
+    C4017 chip("chip");
+    auto *clk = wirePin(chip, 14); clk->value = True;
+    cr_assert_eq(chip.compute(14), True,  "Input pin 14 must return linked value");
+    auto *inh = wirePin(chip, 13); inh->value = False;
+    cr_assert_eq(chip.compute(13), False, "Input pin 13 must return linked value");
+    auto *rst = wirePin(chip, 15); rst->value = False;
+    cr_assert_eq(chip.compute(15), False, "Input pin 15 must return linked value");
+}
+
+Test(c4017, invalid_pin_throws) {
+    C4017 chip("chip");
+    bool threw = false;
+    try { chip.compute(0); } catch (const NtsException &) { threw = true; }
+    cr_assert(threw, "Pin 0 must throw NtsException");
+}
+
 Test(c4040, power_pins_throw) {
     C4040 chip("chip");
     bool t8 = false, t16 = false;
@@ -1994,6 +2096,21 @@ Test(c4040, wraps_at_4096) {
         cr_assert_eq(chip.compute(p), False, "Pin %zu must be 0 after wrap-around", p);
 }
 
+Test(c4040, input_pin_passthrough) {
+    C4040 chip("chip");
+    auto *clk = wirePin(chip, 10); clk->value = True;
+    cr_assert_eq(chip.compute(10), True,  "Input pin 10 must return linked value");
+    auto *rst = wirePin(chip, 11); rst->value = False;
+    cr_assert_eq(chip.compute(11), False, "Input pin 11 must return linked value");
+}
+
+Test(c4040, invalid_pin_throws) {
+    C4040 chip("chip");
+    bool threw = false;
+    try { chip.compute(0); } catch (const NtsException &) { threw = true; }
+    cr_assert(threw, "Pin 0 must throw NtsException");
+}
+
 Test(c4094, power_pins_throw) {
     C4094 chip("chip");
     bool t8 = false, t16 = false;
@@ -2058,6 +2175,40 @@ Test(c4094, qs_serial_output) {
         clk->value = False; chip.simulate(tick++);
     }
     cr_assert_eq(chip.compute(9), True, "Qs (pin9) must reflect register[7]");
+}
+
+Test(c4094, input_pin_passthrough) {
+    C4094 chip("chip");
+    auto *strobe = wirePin(chip, 1); strobe->value = True;
+    cr_assert_eq(chip.compute(1), True, "Input pin 1 must return linked value");
+    auto *oe = wirePin(chip, 15); oe->value = False;
+    cr_assert_eq(chip.compute(15), False, "Input pin 15 must return linked value");
+}
+
+Test(c4094, qs_prime_serial_output) {
+    C4094 chip("chip");
+    auto *strobe = wirePin(chip, 1); strobe->value = False;
+    auto *data   = wirePin(chip, 2); data->value = True;
+    auto *clk    = wirePin(chip, 3); clk->value = False;
+    auto *oe     = wirePin(chip, 15); oe->value = True;
+
+    std::size_t tick = 1;
+    for (int i = 0; i < 8; i++) {
+        clk->value = True;  chip.simulate(tick++);
+        clk->value = False; chip.simulate(tick++);
+    }
+    strobe->value = True;
+    chip.simulate(tick++);
+
+    cr_assert_eq(chip.compute(10), True, "Qs' (pin 10) must reflect registers_next[7]");
+}
+
+Test(c4094, invalid_pin_throws) {
+    C4094 chip("chip");
+    auto *oe = wirePin(chip, 15); oe->value = True;
+    bool threw = false;
+    try { chip.compute(0); } catch (const NtsException &) { threw = true; }
+    cr_assert(threw, "Pin 0 must throw NtsException");
 }
 
 Test(c4512, power_pins_throw) {
@@ -2199,6 +2350,34 @@ Test(c4514, strobe_latches_address) {
     cr_assert_eq(chip.compute(9),  False, "Output 1 must stay False");
 }
 
+Test(c4514, undefined_address_gives_undefined_output) {
+    C4514 chip("chip");
+    auto *inh    = wirePin(chip, 23); inh->value = False;
+    auto *strobe = wirePin(chip,  1); strobe->value = True;
+    auto *a0     = wirePin(chip,  2); a0->value  = Undefined;
+    auto *a1     = wirePin(chip,  3); a1->value  = False;
+    auto *a2     = wirePin(chip, 21); a2->value  = False;
+    auto *a3     = wirePin(chip, 22); a3->value  = False;
+
+    chip.simulate(1);
+
+    cr_assert_eq(chip.compute(11), Undefined,
+        "Output must be Undefined when latched address is Undefined");
+}
+
+Test(c4514, input_pin_passthrough) {
+    C4514 chip("chip");
+    auto *a0 = wirePin(chip, 2); a0->value = True;
+    cr_assert_eq(chip.compute(2), True, "Input pin 2 must return linked value");
+}
+
+Test(c4514, invalid_pin_throws) {
+    C4514 chip("chip");
+    bool threw = false;
+    try { chip.compute(0); } catch (const NtsException &) { threw = true; }
+    cr_assert(threw, "Pin 0 must throw NtsException");
+}
+
 Test(c4801, power_pins_throw) {
     C4801 chip("chip");
     bool t12 = false, t19 = false, t24 = false;
@@ -2265,6 +2444,97 @@ Test(c4801, read_unwritten_returns_zero) {
     for (auto p : dataPins)
         cr_assert_eq(chip.compute(p), False,
             "Data pin %zu must be 0 for unwritten address", p);
+}
+
+Test(c4801, simulate_aborts_on_undefined_address_bit) {
+    C4801 chip("chip");
+    auto *cs = wirePin(chip, 18); cs->value = True;
+    auto *we = wirePin(chip, 21); we->value = True;
+    auto *oe = wirePin(chip, 20); oe->value = False;
+
+    auto *a0 = wirePin(chip, 8); a0->value = Undefined;
+    for (std::size_t p : {7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u}) {
+        auto *s = wirePin(chip, p); s->value = False;
+    }
+    std::size_t dataPins[] = {9, 10, 11, 13, 14, 15, 16, 17};
+    for (auto p : dataPins) { auto *d = wirePin(chip, p); d->value = True; }
+
+    chip.simulate(1);
+    chip.simulate(2);
+
+    a0->value = False;
+    we->value = False;
+    oe->value = True;
+    chip.simulate(3);
+
+    for (auto p : dataPins)
+        cr_assert_eq(chip.compute(p), False,
+            "Memory must not be written when address bit is Undefined");
+}
+
+Test(c4801, write_to_nonzero_address) {
+    C4801 chip("chip");
+    auto *cs = wirePin(chip, 18); cs->value = True;
+    auto *we = wirePin(chip, 21); we->value = True;
+    auto *oe = wirePin(chip, 20); oe->value = False;
+
+    auto *a0 = wirePin(chip, 8); a0->value = True;
+    for (std::size_t p : {7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u}) {
+        auto *s = wirePin(chip, p); s->value = False;
+    }
+    std::size_t dataPins[] = {9, 10, 11, 13, 14, 15, 16, 17};
+    for (auto p : dataPins) { auto *d = wirePin(chip, p); d->value = True; }
+
+    chip.simulate(1);
+    chip.simulate(2);
+
+    we->value = False;
+    oe->value = True;
+    chip.simulate(3);
+
+    for (auto p : dataPins)
+        cr_assert_eq(chip.compute(p), True,
+            "Data pin %zu must be 1 at address 1 after write", p);
+}
+
+Test(c4801, input_pin_passthrough) {
+    C4801 chip("chip");
+    auto *cs = wirePin(chip, 18); cs->value = True;
+    cr_assert_eq(chip.compute(18), True, "Input pin 18 must return linked value");
+}
+
+Test(c4801, compute_data_pin_cs_disabled_returns_undefined) {
+    C4801 chip("chip");
+    auto *cs = wirePin(chip, 18); cs->value = False;
+    auto *oe = wirePin(chip, 20); oe->value = True;
+    auto *we = wirePin(chip, 21); we->value = False;
+    for (std::size_t p : {8u, 7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u}) {
+        auto *s = wirePin(chip, p); s->value = False;
+    }
+    chip.simulate(1);
+    cr_assert_eq(chip.compute(9), Undefined,
+        "Data pin must be Undefined when CS is disabled");
+}
+
+Test(c4801, compute_data_pin_undefined_address_returns_undefined) {
+    C4801 chip("chip");
+    auto *cs = wirePin(chip, 18); cs->value = True;
+    auto *oe = wirePin(chip, 20); oe->value = True;
+    auto *we = wirePin(chip, 21); we->value = False;
+    auto *a0 = wirePin(chip, 8); a0->value = Undefined;
+    for (std::size_t p : {7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u}) {
+        auto *s = wirePin(chip, p); s->value = False;
+    }
+    chip.simulate(1);
+    cr_assert_eq(chip.compute(9), Undefined,
+        "Data pin must be Undefined when address bit is Undefined");
+}
+
+Test(c4801, invalid_pin_throws) {
+    C4801 chip("chip");
+    bool threw = false;
+    try { chip.compute(0); } catch (const NtsException &) { threw = true; }
+    cr_assert(threw, "Pin 0 must throw NtsException");
 }
 
 static std::vector<unsigned char> readLogFile()
@@ -2523,4 +2793,511 @@ Test(component_factory, each_call_returns_new_instance) {
     auto b = factory.createComponent("and", "g2");
     cr_assert_neq(a.get(), b.get(),
         "each createComponent call should return a distinct object");
+}
+
+Test(component_factory, creates_nor_gate) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("nor", "g");
+    cr_assert_not_null(dynamic_cast<NorGate *>(comp.get()));
+}
+
+Test(component_factory, creates_nand_gate) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("nand", "g");
+    cr_assert_not_null(dynamic_cast<NandGate *>(comp.get()));
+}
+
+Test(component_factory, creates_c4030) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4030", "g");
+    cr_assert_not_null(dynamic_cast<C4030 *>(comp.get()));
+}
+
+Test(component_factory, creates_c4071) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4071", "g");
+    cr_assert_not_null(dynamic_cast<C4071 *>(comp.get()));
+}
+
+Test(component_factory, creates_c4081) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4081", "g");
+    cr_assert_not_null(dynamic_cast<C4081 *>(comp.get()));
+}
+
+Test(component_factory, creates_c4017) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4017", "g");
+    cr_assert_not_null(dynamic_cast<C4017 *>(comp.get()));
+}
+
+Test(component_factory, creates_c4040) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4040", "g");
+    cr_assert_not_null(dynamic_cast<C4040 *>(comp.get()));
+}
+
+Test(component_factory, creates_c4094) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4094", "g");
+    cr_assert_not_null(dynamic_cast<C4094 *>(comp.get()));
+}
+
+Test(component_factory, creates_c4512) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4512", "g");
+    cr_assert_not_null(dynamic_cast<C4512 *>(comp.get()));
+}
+
+Test(component_factory, creates_c4514) {
+    ComponentFactory factory;
+    auto comp = factory.createComponent("4514", "g");
+    cr_assert_not_null(dynamic_cast<C4514 *>(comp.get()));
+}
+
+Test(component_factory, unknown_type_throws) {
+    ComponentFactory factory;
+    bool thrown = false;
+    try { (void)factory.createComponent("unknown_xyz", "g"); }
+    catch (const NtsException &) { thrown = true; }
+    cr_assert(thrown, "Unknown component type should throw NtsException");
+}
+
+Test(stub_factory, creates_non_null_component, .init = cr_redirect_stdout) {
+    StubFactory factory;
+    auto comp = factory.createComponent("mytype", "myname");
+    cr_assert_not_null(comp.get());
+}
+
+Test(stub_factory, compute_returns_undefined, .init = cr_redirect_stdout) {
+    StubFactory factory;
+    auto comp = factory.createComponent("mytype", "myname");
+    cr_assert_eq(comp->compute(1), Undefined);
+}
+
+Test(stub_factory, prints_type_to_stdout, .init = cr_redirect_stdout) {
+    StubFactory factory;
+    auto comp = factory.createComponent("mytype", "myname");
+    (void)comp;
+    cr_assert_stdout_eq_str("mytype\n");
+}
+
+Test(shell, eof_exits_cleanly, .init = cr_redirect_stdout) {
+    Circuit c;
+    Shell shell(c);
+    std::istringstream mock_input("");
+    std::streambuf *old_cin = std::cin.rdbuf(mock_input.rdbuf());
+    shell.run();
+    std::cin.rdbuf(old_cin);
+    cr_assert(true, "Shell should exit cleanly on EOF");
+}
+
+Test(shell, empty_lines_ignored, .init = cr_redirect_stdout) {
+    Circuit c;
+    Shell shell(c);
+    std::istringstream mock_input("\n\nexit\n");
+    std::streambuf *old_cin = std::cin.rdbuf(mock_input.rdbuf());
+    shell.run();
+    std::cin.rdbuf(old_cin);
+    cr_assert(true, "Shell should ignore empty lines");
+}
+
+Test(shell, cmd_set_input_empty_value_error, .init = cr_redirect_stderr) {
+    Circuit c;
+    Shell shell(c);
+    std::istringstream mock_input("name=\nexit\n");
+    std::streambuf *old_cin = std::cin.rdbuf(mock_input.rdbuf());
+    shell.run();
+    std::cin.rdbuf(old_cin);
+    cr_assert_stderr_eq_str("Error: Invalid input assignment: 'name='\n");
+}
+
+Test(shell, cmd_set_input_starts_with_eq_error, .init = cr_redirect_stderr) {
+    Circuit c;
+    Shell shell(c);
+    std::istringstream mock_input("=1\nexit\n");
+    std::streambuf *old_cin = std::cin.rdbuf(mock_input.rdbuf());
+    shell.run();
+    std::cin.rdbuf(old_cin);
+    cr_assert_stderr_eq_str("Error: Invalid input assignment: '=1'\n");
+}
+
+Test(shell, cmd_loop_exits_on_sigint) {
+    Circuit c;
+    std::thread t([] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        raise(SIGINT);
+    });
+    Shell shell(c);
+    std::istringstream mock_input("loop\nexit\n");
+    std::streambuf *old_cin = std::cin.rdbuf(mock_input.rdbuf());
+    std::ostringstream discard;
+    std::streambuf *old_cout = std::cout.rdbuf(discard.rdbuf());
+    shell.run();
+    std::cout.rdbuf(old_cout);
+    std::cin.rdbuf(old_cin);
+    t.join();
+    cr_assert(true, "cmdLoop should exit after SIGINT");
+}
+
+Test(parser, double_chipsets_throws) {
+    TestFactory factory;
+    Parser parser(factory);
+    std::istringstream iss(".chipsets:\ninput a\n.chipsets:\n");
+    bool thrown = false;
+    try { (void)parser.parse(iss); } catch (const ParseError &) { thrown = true; }
+    cr_assert(thrown, "Expected ParseError on duplicate .chipsets: section");
+}
+
+Test(parser, links_before_chipsets_throws) {
+    TestFactory factory;
+    Parser parser(factory);
+    std::istringstream iss(".links:\n");
+    bool thrown = false;
+    try { (void)parser.parse(iss); } catch (const ParseError &) { thrown = true; }
+    cr_assert(thrown, "Expected ParseError when .links: appears before .chipsets:");
+}
+
+Test(parser, content_outside_section_throws) {
+    TestFactory factory;
+    Parser parser(factory);
+    std::istringstream iss("input a\n.chipsets:\n");
+    bool thrown = false;
+    try { (void)parser.parse(iss); } catch (const ParseError &) { thrown = true; }
+    cr_assert(thrown, "Expected ParseError for content outside any section");
+}
+
+Test(parser, clock_registered) {
+    TestFactory factory;
+    Parser parser(factory);
+    std::istringstream iss(".chipsets:\nclock ck1\n.links:\n");
+    Circuit circuit = parser.parse(iss);
+    cr_assert(circuit.hasComponent("ck1"), "Clock component should be registered");
+}
+
+Test(parser, pin_zero_throws) {
+    TestFactory factory;
+    Parser parser(factory);
+    std::istringstream iss(".chipsets:\ninput a\noutput b\n.links:\na:0 b:1\n");
+    bool thrown = false;
+    try { (void)parser.parse(iss); } catch (const ParseError &) { thrown = true; }
+    cr_assert(thrown, "Expected ParseError when pin number is 0");
+}
+
+Test(parser, extra_chars_chipset_line_throws) {
+    TestFactory factory;
+    Parser parser(factory);
+    std::istringstream iss(".chipsets:\ninput a extra\n");
+    bool thrown = false;
+    try { (void)parser.parse(iss); } catch (const ParseError &) { thrown = true; }
+    cr_assert(thrown, "Expected ParseError on extra tokens at end of chipset line");
+}
+
+Test(parser, extra_chars_link_line_throws) {
+    TestFactory factory;
+    Parser parser(factory);
+    std::istringstream iss(".chipsets:\ninput a\noutput b\n.links:\na:1 b:1 extra\n");
+    bool thrown = false;
+    try { (void)parser.parse(iss); } catch (const ParseError &) { thrown = true; }
+    cr_assert(thrown, "Expected ParseError on extra tokens at end of link line");
+}
+
+Test(parser, extra_content_after_section_header_ignored) {
+    TestFactory factory;
+    Parser parser(factory);
+    std::istringstream iss(".chipsets: extra stuff\ninput a\n.links: more extra\n");
+    Circuit circuit = parser.parse(iss);
+    cr_assert(circuit.hasComponent("a"), "Extra content after section header should be ignored");
+}
+
+Test(parser, parse_from_file_success) {
+    TestFactory factory;
+    Parser parser(factory);
+    const char *tmpPath = "/tmp/test_tekspice_parser.nts";
+    {
+        std::ofstream f(tmpPath);
+        f << ".chipsets:\ninput a\n.links:\n";
+    }
+    Circuit circuit = parser.parse(std::string(tmpPath));
+    std::remove(tmpPath);
+    cr_assert(circuit.hasComponent("a"), "Component from file should be parsed correctly");
+}
+
+Test(output, simulate_no_crash) {
+    Output out("out");
+    out.simulate(1);
+    cr_assert(true, "Output simulate() should not crash");
+}
+
+Test(c4512, simulate_no_crash) {
+    C4512 chip("chip");
+    chip.simulate(1);
+    cr_assert(true, "C4512 simulate() should not crash");
+}
+
+Test(c4512, input_pin_direct_read) {
+    C4512 chip("chip");
+    auto *src = wirePin(chip, 1); src->value = True;
+    cr_assert_eq(chip.compute(1), True, "compute(1) should return the linked value");
+}
+
+Test(c4512, undefined_address_gives_undefined) {
+    C4512 chip("chip");
+    wirePin(chip, 10)->value = False;
+    wirePin(chip, 15)->value = True;
+    wirePin(chip, 11)->value = Undefined;
+    wirePin(chip, 12)->value = False;
+    wirePin(chip, 13)->value = False;
+    cr_assert_eq(chip.compute(14), Undefined, "Undefined address pin must give Undefined output");
+}
+
+Test(c4512, invalid_pin_throws) {
+    C4512 chip("chip");
+    bool thrown = false;
+    try { chip.compute(17); } catch (const NtsException &) { thrown = true; }
+    cr_assert(thrown, "Invalid pin must throw NtsException");
+}
+
+Test(c4512, selects_channel_1) {
+    C4512 chip("chip");
+    wirePin(chip, 10)->value = False;
+    wirePin(chip, 15)->value = True;
+    wirePin(chip, 11)->value = True;
+    wirePin(chip, 12)->value = False;
+    wirePin(chip, 13)->value = False;
+    wirePin(chip,  1)->value = False;
+    wirePin(chip,  2)->value = True;
+    cr_assert_eq(chip.compute(14), True, "Channel 1 (pin 2) must be selected when A=1,B=0,C=0");
+}
+
+Test(c2716, simulate_no_crash) {
+    C2716 chip("chip");
+    chip.simulate(1);
+    cr_assert(true, "C2716 simulate() should not crash");
+}
+
+Test(c2716, power_pins_throw) {
+    C2716 chip("chip");
+    bool t12 = false, t21 = false, t24 = false;
+    try { chip.compute(12); } catch (const NtsException &) { t12 = true; }
+    try { chip.compute(21); } catch (const NtsException &) { t21 = true; }
+    try { chip.compute(24); } catch (const NtsException &) { t24 = true; }
+    cr_assert(t12, "Pin 12 must throw");
+    cr_assert(t21, "Pin 21 must throw");
+    cr_assert(t24, "Pin 24 must throw");
+}
+
+Test(c2716, input_pin_returns_linked_value) {
+    C2716 chip("chip");
+    wirePin(chip, 8)->value = True;
+    cr_assert_eq(chip.compute(8), True, "Input pin 8 should return the linked value");
+}
+
+Test(c2716, output_undefined_without_enable) {
+    C2716 chip("chip");
+    wirePin(chip, 18)->value = False;
+    wirePin(chip, 20)->value = True;
+    for (auto p : {8u, 7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u, 19u})
+        wirePin(chip, p)->value = False;
+    cr_assert_eq(chip.compute(9), Undefined, "Output must be Undefined when CE is not True");
+}
+
+Test(c2716, output_reads_data_all_pins) {
+    C2716 chip("chip");
+    wirePin(chip, 18)->value = True;
+    wirePin(chip, 20)->value = True;
+    for (auto p : {8u, 7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u, 19u})
+        wirePin(chip, p)->value = False;
+    for (auto p : {9u, 10u, 11u, 13u, 14u, 15u, 16u, 17u}) {
+        Tristate r = chip.compute(p);
+        cr_assert(r == True || r == False, "Output pin must return True or False when enabled");
+    }
+}
+
+Test(c2716, output_undefined_with_undefined_address) {
+    C2716 chip("chip");
+    wirePin(chip, 18)->value = True;
+    wirePin(chip, 20)->value = True;
+    wirePin(chip,  8)->value = Undefined;
+    for (auto p : {7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u, 19u})
+        wirePin(chip, p)->value = False;
+    cr_assert_eq(chip.compute(9), Undefined, "Undefined address pin must give Undefined output");
+}
+
+Test(c2716, invalid_pin_throws) {
+    C2716 chip("chip");
+    bool thrown = false;
+    try { chip.compute(25); } catch (const NtsException &) { thrown = true; }
+    cr_assert(thrown, "Invalid pin must throw NtsException");
+}
+
+Test(c2716, output_undefined_without_oe) {
+    C2716 chip("chip");
+    wirePin(chip, 18)->value = True;
+    wirePin(chip, 20)->value = False;
+    for (auto p : {8u, 7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u, 19u})
+        wirePin(chip, p)->value = False;
+    cr_assert_eq(chip.compute(9), Undefined, "Output must be Undefined when OE is not True");
+}
+
+Test(c2716, output_reads_nonzero_address) {
+    C2716 chip("chip");
+    wirePin(chip, 18)->value = True;
+    wirePin(chip, 20)->value = True;
+    wirePin(chip,  8)->value = True;
+    for (auto p : {7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u, 19u})
+        wirePin(chip, p)->value = False;
+    Tristate r = chip.compute(9);
+    cr_assert(r == True || r == False, "Output with address=1 must return True or False");
+}
+
+Test(c2716, loads_rom_file_padding) {
+    {
+        std::ofstream f("./rom.bin", std::ios::binary);
+        uint8_t byte = 0xAA;
+        f.write(reinterpret_cast<char *>(&byte), 1);
+    }
+    C2716 chip("rom_load_test");
+    std::remove("./rom.bin");
+    wirePin(chip, 18)->value = True;
+    wirePin(chip, 20)->value = True;
+    for (auto p : {8u, 7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u, 19u})
+        wirePin(chip, p)->value = False;
+    Tristate r9  = chip.compute(9);
+    Tristate r10 = chip.compute(10);
+    cr_assert(r9  == True || r9  == False);
+    cr_assert(r10 == True || r10 == False);
+}
+
+Test(stub_factory, simulate_no_crash, .init = cr_redirect_stdout) {
+    StubFactory factory;
+    auto comp = factory.createComponent("type", "name");
+    comp->simulate(1);
+    cr_assert(true, "StubComponent simulate() should not crash");
+}
+
+Test(or_gate, input_pin_returns_linked_value) {
+  OrGate g("g");
+  TestableComponent src;
+  src.value = True;
+  g.setLink(1, src, 1);
+  cr_assert_eq(g.compute(1), True, "compute(1) should return linked value");
+}
+
+Test(xor_gate, input_pin_returns_linked_value) {
+  XorGate g("g");
+  TestableComponent src;
+  src.value = False;
+  g.setLink(2, src, 1);
+  cr_assert_eq(g.compute(2), False, "compute(2) should return linked value");
+}
+
+Test(nor_gate, input_pin_returns_linked_value) {
+  NorGate g("g");
+  TestableComponent src;
+  src.value = True;
+  g.setLink(1, src, 1);
+  cr_assert_eq(g.compute(1), True, "compute(1) should return linked value");
+}
+
+Test(acomponent, computing_flag_cycle_returns_undefined) {
+  AndGate a("a"), b("b");
+  a.setLink(1, b, 3);
+  b.setLink(1, a, 3);
+  Tristate result = a.compute(3);
+  cr_assert_eq(result, Undefined,
+               "Circular compute should return Undefined via _computing guard");
+}
+
+Test(circuit, add_null_component_throws) {
+  Circuit c;
+  bool thrown = false;
+  try {
+    c.addComponent("foo", nullptr);
+  } catch (const ParseError &) {
+    thrown = true;
+  }
+  cr_assert(thrown, "addComponent(nullptr) should throw ParseError");
+}
+
+Test(circuit, const_get_unknown_throws) {
+  Circuit c;
+  c.addComponent("foo", std::make_unique<TestableComponent>());
+  const Circuit &cc = c;
+  bool thrown = false;
+  try {
+    (void)cc.getComponent("nonexistent");
+  } catch (const ParseError &) {
+    thrown = true;
+  }
+  cr_assert(thrown, "const getComponent for unknown should throw ParseError");
+}
+
+Test(circuit, const_get_known_succeeds) {
+  Circuit c;
+  c.addComponent("foo", std::make_unique<TestableComponent>());
+  const Circuit &cc = c;
+  bool noThrow = true;
+  try {
+    (void)cc.getComponent("foo");
+  } catch (...) {
+    noThrow = false;
+  }
+  cr_assert(noThrow, "const getComponent for existing component should not throw");
+}
+
+Test(circuit, compute_all_outputs_no_crash) {
+  Circuit c;
+  auto out = std::make_unique<TestableComponent>();
+  out->value = True;
+  c.addComponent("out1", std::move(out));
+  c.addOutputName("out1");
+  bool noThrow = true;
+  try {
+    c.computeAllOutputs();
+  } catch (...) {
+    noThrow = false;
+  }
+  cr_assert(noThrow, "computeAllOutputs should not throw");
+}
+
+Test(circuit, display_undefined_value, .init = cr_redirect_stdout) {
+  Circuit c;
+  auto in = std::make_unique<TestableComponent>();
+  c.addComponent("in_u", std::move(in));
+  c.addInputName("in_u");
+  c.display();
+  cr_assert_stdout_eq_str("tick: 0\n"
+                          "input(s):\n"
+                          "  in_u: U\n"
+                          "output(s):\n");
+}
+
+Test(circuit, set_input_not_registered_throws) {
+  Circuit c;
+  c.addComponent("out1", std::make_unique<TestableComponent>());
+  bool thrown = false;
+  try {
+    c.setInputValue("out1", "1");
+  } catch (const NtsException &) {
+    thrown = true;
+  }
+  cr_assert(thrown,
+            "setInputValue on component not registered as input/clock should throw");
+}
+
+Test(lexer, digit_alpha_mixed_token_is_identifier) {
+  Lexer lexer("42abc");
+  Token t = lexer.nextToken();
+  cr_assert_eq(t.type, TokenType::IDENTIFIER,
+               "Token starting with digit but containing alpha should be IDENTIFIER");
+  cr_assert_str_eq(t.value.c_str(), "42abc");
+}
+
+Test(lexer, digit_underscore_mixed_token_is_identifier) {
+  Lexer lexer("1_foo");
+  Token t = lexer.nextToken();
+  cr_assert_eq(t.type, TokenType::IDENTIFIER,
+               "Token starting with digit but containing underscore should be IDENTIFIER");
+  cr_assert_str_eq(t.value.c_str(), "1_foo");
 }
