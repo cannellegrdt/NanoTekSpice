@@ -15,8 +15,7 @@ namespace nts {
     {
         _name = name;
         _fileStream.open("./log.bin", std::ios::binary | std::ios::app);
-        if (!_fileStream.is_open())
-            throw NtsException("Logger: cannot open log file './log.bin'");
+        if (!_fileStream.is_open()) throw NtsException("Logger: cannot open log file './log.bin'");
     }
 
     void Logger::simulate(std::size_t tick)
