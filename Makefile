@@ -6,7 +6,7 @@
 ##
 
 NAME	=	nanotekspice
-CC	=	g++
+CC	=	clang++
 SRC	=	$(shell find src/ -name "*.cpp")
 OBJ	=	$(SRC:.cpp=.o)
 
