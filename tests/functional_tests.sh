@@ -42,7 +42,6 @@ done
 
 normalize() { sed 's/[[:space:]]*$//'; }
 
-# run_test <name> <file.nts> <stdin> <stdout_expected> [exit_expected=0]
 run_test() {
     local name="$1" nts_file="$2" input_cmds="$3" expected_out="$4"
     local expected_exit="${5:-0}"
@@ -77,7 +76,6 @@ run_test() {
     fi
 }
 
-# run_error_test <name> [file.nts|-] [stdin] [exit_expected=84]
 run_error_test() {
     local name="$1" nts_file="${2:-}" input_cmds="${3:-}"
     local expected_exit="${4:-84}"
@@ -638,6 +636,269 @@ output(s):
         0
 fi
 
+
+# tests/extra_tests.sh
+
+section "11. Individual Gates Tests"
+
+# 4001: NOR
+cat > "$TMPDIR_NTS/4001.nts" << 'EOF'
+.chipsets:
+input a
+input b
+4001 nor
+output out
+.links:
+a:1 nor:1
+b:1 nor:2
+nor:3 out:1
+EOF
+run_test "4001 NOR gate: 0 NOR 0 = 1" "$TMPDIR_NTS/4001.nts" "$(printf 'a=0\nb=0\nsimulate\ndisplay\nexit\n')" "> > > > tick: 1
+input(s):
+  a: 0
+  b: 0
+output(s):
+  out: 1
+> " 0
+
+run_test "4001 NOR gate: 1 NOR 0 = 0" "$TMPDIR_NTS/4001.nts" "$(printf 'a=1\nb=0\nsimulate\ndisplay\nexit\n')" "> > > > tick: 1
+input(s):
+  a: 1
+  b: 0
+output(s):
+  out: 0
+> " 0
+
+# 4011: NAND
+cat > "$TMPDIR_NTS/4011.nts" << 'EOF'
+.chipsets:
+input a
+input b
+4011 nand
+output out
+.links:
+a:1 nand:1
+b:1 nand:2
+nand:3 out:1
+EOF
+run_test "4011 NAND gate: 1 NAND 1 = 0" "$TMPDIR_NTS/4011.nts" "$(printf 'a=1\nb=1\nsimulate\ndisplay\nexit\n')" "> > > > tick: 1
+input(s):
+  a: 1
+  b: 1
+output(s):
+  out: 0
+> " 0
+
+run_test "4011 NAND gate: 0 NAND 1 = 1" "$TMPDIR_NTS/4011.nts" "$(printf 'a=0\nb=1\nsimulate\ndisplay\nexit\n')" "> > > > tick: 1
+input(s):
+  a: 0
+  b: 1
+output(s):
+  out: 1
+> " 0
+
+# 4030: XOR
+cat > "$TMPDIR_NTS/4030.nts" << 'EOF'
+.chipsets:
+input a
+input b
+4030 xor
+output out
+.links:
+a:1 xor:1
+b:1 xor:2
+xor:3 out:1
+EOF
+run_test "4030 XOR gate: 1 XOR 1 = 0" "$TMPDIR_NTS/4030.nts" "$(printf 'a=1\nb=1\nsimulate\ndisplay\nexit\n')" "> > > > tick: 1
+input(s):
+  a: 1
+  b: 1
+output(s):
+  out: 0
+> " 0
+
+run_test "4030 XOR gate: 0 XOR 1 = 1" "$TMPDIR_NTS/4030.nts" "$(printf 'a=0\nb=1\nsimulate\ndisplay\nexit\n')" "> > > > tick: 1
+input(s):
+  a: 0
+  b: 1
+output(s):
+  out: 1
+> " 0
+
+# 4069: INVERTER
+cat > "$TMPDIR_NTS/4069.nts" << 'EOF'
+.chipsets:
+input a
+4069 inv
+output out
+.links:
+a:1 inv:1
+inv:2 out:1
+EOF
+run_test "4069 INVERTER gate: INV 0 = 1" "$TMPDIR_NTS/4069.nts" "$(printf 'a=0\nsimulate\ndisplay\nexit\n')" "> > > tick: 1
+input(s):
+  a: 0
+output(s):
+  out: 1
+> " 0
+
+# 4071: OR
+cat > "$TMPDIR_NTS/4071.nts" << 'EOF'
+.chipsets:
+input a
+input b
+4071 or
+output out
+.links:
+a:1 or:1
+b:1 or:2
+or:3 out:1
+EOF
+run_test "4071 OR gate: 0 OR 1 = 1" "$TMPDIR_NTS/4071.nts" "$(printf 'a=0\nb=1\nsimulate\ndisplay\nexit\n')" "> > > > tick: 1
+input(s):
+  a: 0
+  b: 1
+output(s):
+  out: 1
+> " 0
+# tests/advanced_tests.sh
+
+section "12. Advanced Components Instantiation Tests"
+
+cat > "$TMPDIR_NTS/4008.nts" << 'EOF'
+.chipsets:
+4008 adder
+output out
+.links:
+adder:10 out:1
+EOF
+run_test "4008 (4-bit adder) instantiation" "$TMPDIR_NTS/4008.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
+input(s):
+output(s):
+  out: U
+> " 0
+
+cat > "$TMPDIR_NTS/4013.nts" << 'EOF'
+.chipsets:
+4013 ff
+output out
+.links:
+ff:1 out:1
+EOF
+run_test "4013 (dual flip-flop) instantiation" "$TMPDIR_NTS/4013.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
+input(s):
+output(s):
+  out: U
+> " 0
+
+cat > "$TMPDIR_NTS/4017.nts" << 'EOF'
+.chipsets:
+4017 johnson
+output out
+.links:
+johnson:3 out:1
+EOF
+run_test "4017 (Johnson counter) instantiation" "$TMPDIR_NTS/4017.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
+input(s):
+output(s):
+  out: 1
+> " 0
+
+cat > "$TMPDIR_NTS/4040.nts" << 'EOF'
+.chipsets:
+4040 ripple
+output out
+.links:
+ripple:9 out:1
+EOF
+run_test "4040 (ripple counter) instantiation" "$TMPDIR_NTS/4040.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
+input(s):
+output(s):
+  out: 0
+> " 0
+
+cat > "$TMPDIR_NTS/4094.nts" << 'EOF'
+.chipsets:
+4094 shiftreg
+output out
+.links:
+shiftreg:4 out:1
+EOF
+run_test "4094 (shift register) instantiation" "$TMPDIR_NTS/4094.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
+input(s):
+output(s):
+  out: U
+> " 0
+
+cat > "$TMPDIR_NTS/4512.nts" << 'EOF'
+.chipsets:
+4512 selector
+output out
+.links:
+selector:14 out:1
+EOF
+run_test "4512 (data selector) instantiation" "$TMPDIR_NTS/4512.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
+input(s):
+output(s):
+  out: U
+> " 0
+
+cat > "$TMPDIR_NTS/4514.nts" << 'EOF'
+.chipsets:
+4514 decoder
+output out
+.links:
+decoder:11 out:1
+EOF
+run_test "4514 (decoder) instantiation" "$TMPDIR_NTS/4514.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
+input(s):
+output(s):
+  out: 1
+> " 0
+
+cat > "$TMPDIR_NTS/4801.nts" << 'EOF'
+.chipsets:
+4801 ram
+output out
+.links:
+ram:9 out:1
+EOF
+run_test "4801 (RAM) instantiation" "$TMPDIR_NTS/4801.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
+input(s):
+output(s):
+  out: U
+> " 0
+
+cat > "$TMPDIR_NTS/2716.nts" << 'EOF'
+.chipsets:
+2716 rom
+output out
+.links:
+rom:9 out:1
+EOF
+run_test "2716 (ROM) instantiation" "$TMPDIR_NTS/2716.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
+input(s):
+output(s):
+  out: U
+> " 0
+
+cat > "$TMPDIR_NTS/logger.nts" << 'EOF'
+.chipsets:
+clock clk
+input in
+logger log
+.links:
+clk:1 log:9
+in:1 log:1
+EOF
+run_test "logger instantiation" "$TMPDIR_NTS/logger.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
+input(s):
+  clk: U
+  in: U
+output(s):
+> " 0
+
+rm -f ./log.bin
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
