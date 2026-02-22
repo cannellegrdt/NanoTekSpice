@@ -15,6 +15,7 @@
 #include "nts/AComponent.hpp"
 #include "nts/Errors.hpp"
 #include "nts/IComponent.hpp"
+#include "nts/components/Input.hpp"
 
 namespace nts {
 
@@ -135,9 +136,9 @@ void Circuit::setInputValue(const std::string &name, const std::string &value) {
   else if (value != "U")
     throw NtsException("Invalid value '" + value + "' (expected 0, 1 or U)");
 
-  AComponent *acomp = dynamic_cast<AComponent *>(&(*it->second));
-  if (acomp) {
-    acomp->setPin(1, val);
+  Input *inp = dynamic_cast<Input *>(&(*it->second));
+  if (inp) {
+    inp->setValue(val);
   }
 }
 

@@ -22,11 +22,8 @@ void AComponent::setLink(std::size_t pin, IComponent &other, std::size_t otherPi
   _links[pin] = {&other, otherPin};
 
   if (AComponent *abstractOther = dynamic_cast<AComponent *>(&other)) {
-    std::map<std::size_t, std::pair<IComponent *, std::size_t>>::iterator it =
-        abstractOther->_links.find(otherPin);
-    if (it == abstractOther->_links.end() || it->second.first != this ||
-        it->second.second != pin) {
-      abstractOther->_links[otherPin] = {this, pin};
+    if (abstractOther->_links.find(otherPin) == abstractOther->_links.end()) {
+      abstractOther->setLink(otherPin, *this, pin);
     }
   }
 }
