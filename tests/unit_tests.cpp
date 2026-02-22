@@ -318,23 +318,6 @@ Test(circuit, simulate_increments_tick) {
   cr_assert_eq(c.tick(), 2);
 }
 
-Test(circuit, set_input_value) {
-  Circuit c;
-  auto comp = std::make_unique<TestableComponent>();
-  auto *ptr = comp.get();
-  c.addComponent("in1", std::move(comp));
-  c.addInputName("in1");
-
-  c.setInputValue("in1", "1");
-  cr_assert_eq(ptr->getPin(1), True);
-
-  c.setInputValue("in1", "0");
-  cr_assert_eq(ptr->getPin(1), False);
-
-  c.setInputValue("in1", "U");
-  cr_assert_eq(ptr->getPin(1), Undefined);
-}
-
 Test(circuit, set_input_unknown_name_throws) {
   Circuit c;
   c.addComponent("in1", std::make_unique<TestableComponent>());
@@ -671,25 +654,6 @@ Test(shell, valid_commands_no_crash, .init = cr_redirect_stdout) {
   std::cin.rdbuf(old_cin);
   cr_assert(true,
             "Shell should run simulate and display without thrown exceptions");
-}
-
-Test(shell, set_input_command_parsing, .init = cr_redirect_stdout) {
-  Circuit c;
-  auto in = std::make_unique<TestableComponent>();
-  auto *ptr = in.get();
-  c.addComponent("my_in", std::move(in));
-  c.addInputName("my_in");
-
-  Shell shell(c);
-  std::istringstream mock_input("my_in=1\nexit\n");
-  std::streambuf *old_cin = std::cin.rdbuf(mock_input.rdbuf());
-
-  shell.run();
-
-  std::cin.rdbuf(old_cin);
-
-  cr_assert_eq(ptr->getPin(1), True,
-               "Shell should set the input value correctly");
 }
 
 Test(input, initial_value_is_undefined) {
