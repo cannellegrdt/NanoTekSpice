@@ -27,7 +27,7 @@ public:
   Parser &operator=(const Parser &) = delete;
 
   Parser(Parser &&) noexcept = default;
-  Parser &operator=(Parser &&) noexcept = default;
+  Parser &operator=(Parser &&) noexcept = delete;
 
   Circuit parse(const std::string &filepath) const;
   Circuit parse(std::istream &input) const;
