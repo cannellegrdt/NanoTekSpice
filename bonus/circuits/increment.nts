@@ -1,0 +1,12 @@
+.chipsets:
+clock  clk
+input  rst
+output halt_out
+output accept_out
+turing machine
+
+.links:
+clk:1      machine:1
+rst:1      machine:2
+machine:3  halt_out:1
+machine:4  accept_out:1
