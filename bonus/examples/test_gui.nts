@@ -1,0 +1,23 @@
+# Test circuit for GUI bonus — OR gate with 7seg display
+.chipsets:
+input   a
+input   b
+or      gate
+7seg    display
+output  out
+
+.links:
+a:1     gate:1
+b:1     gate:2
+gate:3  out:1
+# 7seg: wire the 4 bits (simplified: only pin 1 and 2 used here)
+gate:3  display:1
+a:1     display:2
+b:1     display:3
+
+.graphtc:
+a        100 200
+b        100 400
+gate     450 300
+out      750 300
+display  950 200
