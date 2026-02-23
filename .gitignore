@@ -52,3 +52,5 @@ nanotekspice
 *.gcno
 unit_tests
 log.bin
+turing_machine
+gui_nts
