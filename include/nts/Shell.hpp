@@ -12,32 +12,47 @@
 
 namespace nts {
 
-    class Circuit;
+class Circuit;
 
-    class Shell {
-    public:
-        explicit Shell(Circuit &circuit);
-        ~Shell() = default;
+/**
+ * @brief Interactive shell for controlling the NanoTekSpice simulation
+ */
+class Shell {
+public:
+  /**
+   * @brief Construct a new Shell object
+   *
+   * @param circuit The circuit to control
+   */
+  explicit Shell(Circuit &circuit);
 
-        Shell(const Shell &) = delete;
-        Shell &operator=(const Shell &) = delete;
+  /**
+   * @brief Destroy the Shell object
+   */
+  ~Shell() = default;
 
-        void run();
+  Shell(const Shell &) = delete;
+  Shell &operator=(const Shell &) = delete;
 
-    private:
-        Circuit &_circuit;
-        bool _running = true;
+  /**
+   * @brief Start the interactive shell loop
+   */
+  void run();
 
-        void handleCommand(const std::string &line);
-        void cmdDisplay();
-        void cmdSimulate();
-        void cmdLoop();
-        void cmdSetInput(const std::string &line);
+private:
+  Circuit &_circuit;
+  bool _running = true;
 
-        static volatile bool _loopInterrupted;
-        static void signalHandler(int signum);
-    };
+  void handleCommand(const std::string &line);
+  void cmdDisplay();
+  void cmdSimulate();
+  void cmdLoop();
+  void cmdSetInput(const std::string &line);
 
-}
+  static volatile bool _loopInterrupted;
+  static void signalHandler(int signum);
+};
+
+} // namespace nts
 
 #endif /* !NTS_SHELL_HPP_ */

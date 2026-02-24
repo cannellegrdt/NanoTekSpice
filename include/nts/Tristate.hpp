@@ -10,12 +10,15 @@
 
 namespace nts {
 
-    enum Tristate {
-        Undefined = -1,
-        False = 0,
-        True = 1
-    };
+/**
+ * @brief Represents the three possible states of a pin or node
+ */
+enum Tristate {
+  Undefined = -1, /*!< The state is undefined (U) */
+  False = 0,      /*!< The logical state is false (0) */
+  True = 1        /*!< The logical state is true (1) */
+};
 
-}
+} // namespace nts
 
 #endif /* !NTS_TRISTATE_HPP_ */
