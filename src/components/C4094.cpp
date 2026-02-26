@@ -24,10 +24,10 @@ namespace nts {
 
         Tristate clock = getLinkValue(3);
 
-        if (_lastClock != True && clock == True) {
-            for (int i = 0; i < 7; i++)
-                _registers[i] = _registers[i + 1];
-            _registers[7] = getLinkValue(2);
+        if (_lastClock == False && clock == True) {
+            for (int i = 7; i > 0; i--)
+                _registers[i] = _registers[i - 1];
+            _registers[0] = getLinkValue(2);
         }
 
         Tristate strobe = getLinkValue(1);

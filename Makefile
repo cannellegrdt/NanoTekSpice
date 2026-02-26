@@ -72,7 +72,7 @@ tests_run:	unit_tests
 	$(MAKE) functional_tests
 
 coverage:	unit_tests
-	gcovr --exclude tests/
+	gcovr --gcov-executable "llvm-cov gcov" --exclude tests/
 
 lint:
 	cppcheck --enable=warning,performance,portability --error-exitcode=1 -I include/ src/

@@ -34,13 +34,15 @@ Tristate AComponent::getLinkValue(std::size_t pin) {
     return Undefined;
   }
   if (_computing) {
-    return Undefined;
+    auto pit = _pins.find(pin);
+    return pit != _pins.end() ? pit->second : Undefined;
   }
   _computing = true;
   IComponent *target = it->second.first;
   std::size_t targetPin = it->second.second;
   Tristate result = target->compute(targetPin);
   _computing = false;
+  _pins[pin] = result;
   return result;
 }
 

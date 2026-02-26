@@ -50,9 +50,9 @@ namespace nts {
             if (pin != p)
                 continue;
 
-            if (getLinkValue(18) != True)
+            if (getLinkValue(18) != False)
                 return Undefined;
-            if (getLinkValue(20) != True)
+            if (getLinkValue(20) != False)
                 return Undefined;
 
             static const std::size_t addrPins[] = {8, 7, 6, 5, 4, 3, 2, 1, 23, 22, 19};

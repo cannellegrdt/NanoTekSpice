@@ -25,7 +25,7 @@ namespace nts {
         Tristate clock = getLinkValue(9);
         Tristate inhibit = getLinkValue(10);
 
-        if (_lastClock != True && clock == True && inhibit == False) {
+        if (_lastClock == False && clock == True && inhibit == False) {
             unsigned char byte = 0;
             for (std::size_t i = 0; i < 8; i++) {
                 if (getLinkValue(i + 1) == True)
