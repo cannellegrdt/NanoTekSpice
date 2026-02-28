@@ -25,9 +25,6 @@ namespace nts {
      * Pins 8 (VSS) and 16 (VDD) are power pins and are ignored.
      */
     class C4008 : public AComponent {
-    private:
-        Tristate _carryOut;
-
     public:
         /**
          * @brief Constructs a C4008 and initializes internal state.

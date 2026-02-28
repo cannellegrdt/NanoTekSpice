@@ -11,7 +11,7 @@
 
 namespace nts {
 
-    C4008::C4008(const std::string &name) : _carryOut(Tristate::Undefined)
+    C4008::C4008(const std::string &name)
     {
         _name = name;
     }
