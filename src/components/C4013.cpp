@@ -14,7 +14,7 @@ namespace nts {
     C4013::C4013(const std::string &name)
         : _q1(Tristate::Undefined), _q1_next(Tristate::Undefined),
           _q2(Tristate::Undefined), _q2_next(Tristate::Undefined),
-          _lastClock1(Tristate::Undefined), _lastClock2(Tristate::Undefined)
+          _lastClock1(Tristate::False), _lastClock2(Tristate::False)
     {
         _name = name;
     }

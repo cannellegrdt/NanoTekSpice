@@ -12,7 +12,7 @@ namespace nts {
 
     C4017::C4017(const std::string &name)
         : _counter(0), _counter_next(0),
-          _lastClock(Tristate::Undefined)
+          _lastClock(Tristate::False)
     {
         _name = name;
     }

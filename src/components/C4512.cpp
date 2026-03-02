@@ -32,10 +32,10 @@ namespace nts {
         }
 
         if (pin == 14) {
-            if (getLinkValue(15) != False)
+            if (getLinkValue(15) != True)
                 return Undefined;
             if (getLinkValue(10) == True)
-                return Undefined;
+                return False;
             Tristate a = getLinkValue(11);
             Tristate b = getLinkValue(12);
             Tristate c = getLinkValue(13);

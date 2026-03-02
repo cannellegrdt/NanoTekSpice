@@ -24,11 +24,11 @@ namespace nts {
             _memory[entry.first] = entry.second;
         _nextMemory.clear();
 
-        if (getLinkValue(18) != False)
+        if (getLinkValue(18) != True)
             return;
 
         Tristate we = getLinkValue(21);
-        if (we != False)
+        if (we != True)
             return;
         
         static const std::size_t addrPins[] = {8, 7, 6, 5, 4, 3, 2, 1, 23, 22};
@@ -68,9 +68,9 @@ namespace nts {
             if (pin != p)
                 continue;
 
-            if (getLinkValue(18) != False)
+            if (getLinkValue(18) != True)
                 return Undefined;
-            if (getLinkValue(20) != False)
+            if (getLinkValue(20) != True)
                 return Undefined;
 
             static const std::size_t addrPins[] = {8, 7, 6, 5, 4, 3, 2, 1, 23, 22};
