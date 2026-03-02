@@ -6,7 +6,7 @@
 ##
 
 CC          =   clang++
-CXXFLAGS    =   -Wall -Wextra -Werror -std=c++20
+CXXFLAGS    =   -Wall -Wextra -Werror -Wunused-private-field -std=c++20
 COMMON_INC  =   -I./include
 
 NAME        =   nanotekspice
