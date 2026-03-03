@@ -12,7 +12,7 @@ namespace nts {
 
     C4040::C4040(const std::string &name)
         : _counter(0), _counter_next(0),
-          _lastClock(Tristate::True)
+          _lastClock(Tristate::False)
     {
         _name = name;
     }

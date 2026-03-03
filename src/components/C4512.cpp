@@ -32,7 +32,7 @@ namespace nts {
         }
 
         if (pin == 14) {
-            if (getLinkValue(15) != True)
+            if (getLinkValue(15) != False)
                 return Undefined;
             if (getLinkValue(10) == True)
                 return False;
