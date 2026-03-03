@@ -1,0 +1,165 @@
+# =============================================================================
+# complex_gui.nts — Démonstration avancée du bonus GUI
+#
+# DESCRIPTION :
+#   Un compteur 12 bits (4040) piloté par une horloge interne génère en
+#   continu des coordonnées X (Q0–Q5) et Y (Q6–Q11) sur une matrice 64×64.
+#   La couleur de chaque pixel est calculée par XOR des bits X et Y grâce
+#   au chipset 4030, produisant un motif arc-en-ciel diagonal.
+#   Les 4 bits de poids faible (Q0–Q3) sont affichés en hexadécimal sur un
+#   afficheur 7 segments.
+#
+# CONTRÔLES (clic sur un input pour cycler U→0→1→U) :
+#   enable    : mettre à 1 pour laisser passer l'horloge (démarrer)
+#               mettre à 0 pour geler le compteur
+#   reset_btn : mettre à 1 pour remettre le compteur à zéro
+#               mettre à 0 pour le fonctionnement normal
+#
+# USAGE :
+#   ./nanotekspice-gui bonus/examples/complex_gui.nts
+#   → Espace : tick manuel  |  L : mode boucle (5 ticks/s)  |  Échap : quitter
+# =============================================================================
+
+.chipsets:
+# --- Entrées de contrôle (interactives via clic) ---
+clock       clk
+input       enable
+input       reset_btn
+
+# --- Gating de l'horloge : clk passe uniquement si enable = 1 ---
+and         clk_gate
+
+# --- Compteur binaire 12 bits ---
+4040        counter
+
+# --- Génération de couleur par XOR des coordonnées (motif diagonal) ---
+4030        xor_gate
+
+# --- Affichage GUI ---
+7seg        hex_disp        # Hex digit des 4 bits LSB du compteur
+matrix      canvas          # Canvas 64x64 px (affiché 256x256 au zoom x4)
+
+# --- Sorties de monitoring ---
+output      q0_mon          # Q0 : alterne à chaque tick
+output      q6_mon          # Q6 : alterne tous les 64 ticks
+
+.links:
+# =============================================================================
+# CONTRÔLE DU COMPTEUR
+# =============================================================================
+
+# L'horloge clk est transmise au compteur uniquement quand enable vaut 1
+clk:1       clk_gate:1
+enable:1    clk_gate:2
+clk_gate:3  counter:10      # → CLK du 4040 (pin 10)
+
+# Reset actif haut : mettre reset_btn à 1 pour remettre à zéro
+reset_btn:1 counter:11      # → Reset du 4040 (pin 11)
+
+# =============================================================================
+# AFFICHEUR 7 SEGMENTS
+# Affiche la valeur hexadécimale (0–F) des 4 bits LSB du compteur
+#   pin 1 = Q0 (LSB) ... pin 4 = Q3 (MSB)
+# =============================================================================
+counter:9   hex_disp:1      # Q0 → bit 0 (poids faible)
+counter:7   hex_disp:2      # Q1 → bit 1
+counter:6   hex_disp:3      # Q2 → bit 2
+counter:5   hex_disp:4      # Q3 → bit 3 (poids fort)
+
+# =============================================================================
+# MATRICE 64×64 — COORDONNÉES DU PIXEL
+#
+#   Coordonnée X = Q0–Q5  (bits  0–5  du compteur, valeurs 0–63)
+#   Coordonnée Y = Q6–Q11 (bits  6–11 du compteur, valeurs 0–63)
+#
+#   Chaque tick, un pixel est écrit à (X, Y) avec la couleur calculée.
+#   Après 4096 ticks (2^12), le canvas entier est rempli.
+# =============================================================================
+
+# X : pins 9–14 de la matrice
+counter:9   canvas:9        # Q0  → X bit 0
+counter:7   canvas:10       # Q1  → X bit 1
+counter:6   canvas:11       # Q2  → X bit 2
+counter:5   canvas:12       # Q3  → X bit 3
+counter:3   canvas:13       # Q4  → X bit 4
+counter:2   canvas:14       # Q5  → X bit 5
+
+# Y : pins 15–20 de la matrice
+counter:4   canvas:15       # Q6  → Y bit 0
+counter:13  canvas:16       # Q7  → Y bit 1
+counter:12  canvas:17       # Q8  → Y bit 2
+counter:14  canvas:18       # Q9  → Y bit 3
+counter:15  canvas:19       # Q10 → Y bit 4
+counter:1   canvas:20       # Q11 → Y bit 5
+
+# =============================================================================
+# MATRICE 64×64 — COULEUR (format R3G3B2, 8 bits)
+#
+#   Algorithme : la couleur d'un pixel est le XOR de ses coordonnées X et Y.
+#   Cela produit un motif de damier arc-en-ciel visible dès les premiers ticks.
+#
+#   Encodage :
+#     canvas:1  = R0   canvas:2  = R1   canvas:3  = R2
+#     canvas:4  = G0   canvas:5  = G1   canvas:6  = G2
+#     canvas:7  = B0   canvas:8  = B1
+#
+#   Chipset 4030 (4 portes XOR) :
+#     porte 1 : (pin1, pin2) → pin3
+#     porte 2 : (pin5, pin6) → pin4
+#     porte 3 : (pin8, pin9) → pin10
+#     porte 4 : (pin12,pin13)→ pin11
+# =============================================================================
+
+# Porte XOR 1 : Q0 XOR Q6 → R0
+counter:9   xor_gate:1      # Q0 (X bit 0)
+counter:4   xor_gate:2      # Q6 (Y bit 0)
+xor_gate:3  canvas:1        # → R0
+
+# Porte XOR 2 : Q2 XOR Q8 → R1
+counter:6   xor_gate:5      # Q2 (X bit 2)
+counter:12  xor_gate:6      # Q8 (Y bit 2)
+xor_gate:4  canvas:2        # → R1
+
+# R2 : Q4 direct (varie tous les 16 ticks)
+counter:3   canvas:3        # Q4 → R2
+
+# Porte XOR 3 : Q1 XOR Q7 → G0
+counter:7   xor_gate:8      # Q1 (X bit 1)
+counter:13  xor_gate:9      # Q7 (Y bit 1)
+xor_gate:10 canvas:4        # → G0
+
+# Porte XOR 4 : Q3 XOR Q9 → G1
+counter:5   xor_gate:12     # Q3 (X bit 3)
+counter:14  xor_gate:13     # Q9 (Y bit 3)
+xor_gate:11 canvas:5        # → G1
+
+# G2 : Q5 direct (varie tous les 32 ticks)
+counter:2   canvas:6        # Q5 → G2
+
+# B0 : Q6 direct (même que bit Y0 → diagonales bleues)
+counter:4   canvas:7        # Q6 → B0
+
+# B1 : Q7 direct (varie tous les 128 ticks)
+counter:13  canvas:8        # Q7 → B1
+
+# =============================================================================
+# MONITORING
+# =============================================================================
+counter:9   q0_mon:1        # Q0 — oscillation rapide (1 tick)
+counter:4   q6_mon:1        # Q6 — oscillation lente  (64 ticks)
+
+# =============================================================================
+# POSITIONNEMENT GRAPHIQUE
+# Fenêtre cible : ~1400 × 800 px
+# =============================================================================
+.graphtc:
+clk         100  150
+enable      100  300
+reset_btn   100  450
+clk_gate    320  225
+counter     540  310
+xor_gate    760  140
+hex_disp    960  100
+canvas      1100 280
+q0_mon      960  490
+q6_mon      960  630

@@ -18,8 +18,8 @@ namespace gui {
 
 class GUIShell {
 public:
-    static constexpr unsigned WIN_W = 1200;
-    static constexpr unsigned WIN_H =  800;
+    static constexpr unsigned WIN_W = 1920;
+    static constexpr unsigned WIN_H = 1080;
 
     GUIShell(nts::Circuit &circuit,
              const std::map<std::string, sf::Vector2f> &positions,
