@@ -20,11 +20,14 @@ void AComponent::setName(const std::string &name) {
 
 void AComponent::setLink(std::size_t pin, IComponent &other, std::size_t otherPin) {
   _links[pin] = {&other, otherPin};
+  other.setBackLink(otherPin, *this, pin);
+}
 
-  if (AComponent *abstractOther = dynamic_cast<AComponent *>(&other)) {
-    if (abstractOther->_links.find(otherPin) == abstractOther->_links.end()) {
-      abstractOther->setLink(otherPin, *this, pin);
-    }
+void AComponent::setBackLink(std::size_t pin, IComponent &other,
+                             std::size_t otherPin)
+{
+  if (_links.find(pin) == _links.end()) {
+    setLink(pin, other, otherPin);
   }
 }
 

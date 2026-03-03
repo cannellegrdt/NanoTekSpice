@@ -35,4 +35,9 @@ namespace nts {
         _nextValue = val;
     }
 
+    void Input::setExternalValue(Tristate value)
+    {
+        setValue(value);
+    }
+
 }

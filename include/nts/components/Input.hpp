@@ -48,6 +48,11 @@ namespace nts {
          */
         void setValue(Tristate val);
 
+        /**
+         * @brief IComponent hook: injects an external value (delegates to setValue).
+         */
+        void setExternalValue(Tristate value) override;
+
     protected:
         Tristate _nextValue;
     };

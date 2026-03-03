@@ -61,6 +61,20 @@ public:
                std::size_t otherPin) override;
 
   /**
+   * @brief Establish a reverse link on this component when another component
+   *        links to us.
+   *
+   * Ensures symmetric wiring between components while avoiding infinite
+   * recursion.
+   *
+   * @param pin The pin on this component
+   * @param other The other component participating in the link
+   * @param otherPin The pin on the other component
+   */
+  void setBackLink(std::size_t pin, IComponent &other,
+                   std::size_t otherPin) override;
+
+  /**
    * @brief Set the state of a specific pin
    *
    * @param pin The pin number

@@ -48,6 +48,37 @@ public:
    */
   virtual void setLink(std::size_t pin, IComponent &other,
                        std::size_t otherPin) = 0;
+
+  /**
+   * @brief Optional hook to establish a reverse link on the target component.
+   *
+   * Default implementation does nothing. Components that need symmetric
+   * connections can override this.
+   *
+   * @param pin The pin on this component
+   * @param other The other component participating in the link
+   * @param otherPin The pin on the other component
+   */
+  virtual void setBackLink(std::size_t pin, IComponent &other,
+                           std::size_t otherPin)
+  {
+    (void)pin;
+    (void)other;
+    (void)otherPin;
+  }
+
+  /**
+   * @brief Optional hook to inject an external value into a component.
+   *
+   * Default implementation does nothing. Components that represent
+   * user-controlled sources (inputs, clocks, etc.) can override this.
+   *
+   * @param value The tristate value to inject.
+   */
+  virtual void setExternalValue(Tristate value)
+  {
+    (void)value;
+  }
 };
 
 } // namespace nts
