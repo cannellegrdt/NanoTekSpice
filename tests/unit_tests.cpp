@@ -2959,25 +2959,19 @@ Test(lexer, digit_underscore_mixed_token_is_identifier) {
   cr_assert_str_eq(t.value.c_str(), "1_foo");
 }
 
-// ===== Factory.hpp: virtual destructor (line 26) =====
-
 Test(factory, virtual_destructor_via_base_ptr) {
     IComponentFactory *factory = new ComponentFactory();
     delete factory;
     cr_assert(true, "Deleting ComponentFactory via IComponentFactory* should not crash");
 }
 
-// ===== C2716: output data read path (lines 59-81) =====
-
 Test(c2716, output_reads_default_rom_all_ff) {
     std::remove("./rom.bin");
     C2716 chip("chip");
-    // CE (pin 18) active low = False, OE (pin 20) active low = False
     wirePin(chip, 18)->value = False;
     wirePin(chip, 20)->value = False;
     for (auto p : {8u, 7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u, 19u})
         wirePin(chip, p)->value = False;
-    // Default ROM is 0xFF so all bits should be True
     cr_assert_eq(chip.compute(9),  True, "pin 9  = bit0 of 0xFF = True");
     cr_assert_eq(chip.compute(10), True, "pin 10 = bit1 of 0xFF = True");
     cr_assert_eq(chip.compute(11), True, "pin 11 = bit2 of 0xFF = True");
@@ -2989,7 +2983,6 @@ Test(c2716, output_reads_default_rom_all_ff) {
 }
 
 Test(c2716, output_reads_specific_byte_from_file) {
-    // Create a rom.bin with known data at address 0: 0xA5 = 1010 0101
     {
         std::ofstream f("./rom.bin", std::ios::binary);
         uint8_t data[2048];
@@ -3002,7 +2995,6 @@ Test(c2716, output_reads_specific_byte_from_file) {
     wirePin(chip, 20)->value = False;
     for (auto p : {8u, 7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u, 19u})
         wirePin(chip, p)->value = False;
-    // 0xA5 = 1010 0101
     cr_assert_eq(chip.compute(9),  True,  "pin 9  = bit0 of 0xA5 = 1");
     cr_assert_eq(chip.compute(10), False, "pin 10 = bit1 of 0xA5 = 0");
     cr_assert_eq(chip.compute(11), True,  "pin 11 = bit2 of 0xA5 = 1");
@@ -3015,7 +3007,6 @@ Test(c2716, output_reads_specific_byte_from_file) {
 }
 
 Test(c2716, loadFromFile_short_file_pads_with_ff) {
-    // Write only 1 byte to rom.bin; the rest should be padded with 0xFF
     {
         std::ofstream f("./rom.bin", std::ios::binary);
         uint8_t byte = 0x00;
@@ -3024,11 +3015,9 @@ Test(c2716, loadFromFile_short_file_pads_with_ff) {
     C2716 chip("chip");
     wirePin(chip, 18)->value = False;
     wirePin(chip, 20)->value = False;
-    // Address 0 → should read 0x00
     for (auto p : {8u, 7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u, 19u})
         wirePin(chip, p)->value = False;
     cr_assert_eq(chip.compute(9), False, "Address 0 with 0x00 = bit0 False");
-    // Address 1 (A0=pin8=True) → padded 0xFF = bit0 True
     wirePin(chip, 8)->value = True;
     for (auto p : {7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u, 19u})
         wirePin(chip, p)->value = False;
@@ -3039,33 +3028,28 @@ Test(c2716, loadFromFile_short_file_pads_with_ff) {
 Test(c2716, output_undefined_address_pin_with_active_enable) {
     std::remove("./rom.bin");
     C2716 chip("chip");
-    wirePin(chip, 18)->value = False; // CE active
-    wirePin(chip, 20)->value = False; // OE active
-    wirePin(chip, 8)->value = Undefined; // A0 undefined
+    wirePin(chip, 18)->value = False;
+    wirePin(chip, 20)->value = False;
+    wirePin(chip, 8)->value = Undefined;
     for (auto p : {7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u, 19u})
         wirePin(chip, p)->value = False;
     cr_assert_eq(chip.compute(9), Undefined, "Undefined address must give Undefined output");
 }
-
-// ===== C4094: rising edge shift, strobe latch, pin 9 (lines 28-31, 35, 55) =====
 
 Test(c4094, rising_edge_shifts_data_into_register) {
     C4094 chip("chip");
     auto *clk    = wirePin(chip, 3); clk->value    = False;
     auto *data   = wirePin(chip, 2); data->value   = True;
     auto *strobe = wirePin(chip, 1); strobe->value = False;
-    wirePin(chip, 15)->value = True; // OE
+    wirePin(chip, 15)->value = True;
 
-    // 8 rising edges to fill all registers with True
     for (int i = 0; i < 8; i++) {
         clk->value = False; chip.simulate(i * 2 + 1);
         clk->value = True;  chip.simulate(i * 2 + 2);
     }
-    // Strobe to latch
     strobe->value = True;
     chip.simulate(17);
 
-    // pin 9 = _registers[7] (serial output after 8 shifts)
     cr_assert_eq(chip.compute(9), True, "QS (pin 9) must be True after 8 shifts of True");
 }
 
@@ -3074,7 +3058,7 @@ Test(c4094, strobe_latches_registers_to_output_pins) {
     auto *clk    = wirePin(chip, 3); clk->value    = False;
     auto *data   = wirePin(chip, 2); data->value   = True;
     auto *strobe = wirePin(chip, 1); strobe->value = False;
-    wirePin(chip, 15)->value = True; // OE
+    wirePin(chip, 15)->value = True;
 
     for (int i = 0; i < 8; i++) {
         clk->value = False; chip.simulate(i * 2 + 1);
@@ -3083,7 +3067,6 @@ Test(c4094, strobe_latches_registers_to_output_pins) {
     strobe->value = True;
     chip.simulate(17);
 
-    // pin 10 = _registers_next[7], pin 4 = _registers_next[0]
     cr_assert_eq(chip.compute(4),  True, "Q0 (pin 4) must be True after latch");
     cr_assert_eq(chip.compute(10), True, "QS' (pin 10) must be True after 8 shifts and strobe");
 }
@@ -3093,7 +3076,7 @@ Test(c4094, output_pins_zero_after_shifting_false) {
     auto *clk    = wirePin(chip, 3); clk->value    = False;
     auto *data   = wirePin(chip, 2); data->value   = False;
     auto *strobe = wirePin(chip, 1); strobe->value = False;
-    wirePin(chip, 15)->value = True; // OE
+    wirePin(chip, 15)->value = True;
 
     for (int i = 0; i < 8; i++) {
         clk->value = False; chip.simulate(i * 2 + 1);
@@ -3107,76 +3090,70 @@ Test(c4094, output_pins_zero_after_shifting_false) {
         cr_assert_eq(chip.compute(p), False, "Pin %zu must be False after latching zeros", p);
 }
 
-// ===== C4512: inhibit active and channel select (lines 38, 44, 46) =====
-
 Test(c4512, inhibit_true_output_false) {
     C4512 chip("chip");
-    wirePin(chip, 10)->value = True;  // INH active
-    wirePin(chip, 15)->value = True;  // EN active
-    wirePin(chip, 11)->value = False; // A
-    wirePin(chip, 12)->value = False; // B
-    wirePin(chip, 13)->value = False; // C
+    wirePin(chip, 10)->value = True;
+    wirePin(chip, 15)->value = True;
+    wirePin(chip, 11)->value = False;
+    wirePin(chip, 12)->value = False;
+    wirePin(chip, 13)->value = False;
     cr_assert_eq(chip.compute(14), False, "Output must be False when inhibit=True");
 }
 
 Test(c4512, select_channel_0_reads_pin1) {
     C4512 chip("chip");
-    wirePin(chip, 10)->value = False; // INH inactive
-    wirePin(chip, 15)->value = True;  // EN active
-    wirePin(chip, 11)->value = False; // A=0
-    wirePin(chip, 12)->value = False; // B=0
-    wirePin(chip, 13)->value = False; // C=0 → channel 0 = dataPins[0] = pin 1
-    wirePin(chip,  1)->value = True;  // data at pin 1
+    wirePin(chip, 10)->value = False;
+    wirePin(chip, 15)->value = True;
+    wirePin(chip, 11)->value = False;
+    wirePin(chip, 12)->value = False;
+    wirePin(chip, 13)->value = False;
+    wirePin(chip,  1)->value = True;
     cr_assert_eq(chip.compute(14), True, "Channel 0 (A=B=C=0) should read pin 1 = True");
 }
 
 Test(c4512, select_channel_7_reads_pin9) {
     C4512 chip("chip");
-    wirePin(chip, 10)->value = False; // INH inactive
-    wirePin(chip, 15)->value = True;  // EN active
-    wirePin(chip, 11)->value = True;  // A=1
-    wirePin(chip, 12)->value = True;  // B=1
-    wirePin(chip, 13)->value = True;  // C=1 → channel 7 = dataPins[7] = pin 9
-    wirePin(chip,  9)->value = False; // data at pin 9
+    wirePin(chip, 10)->value = False;
+    wirePin(chip, 15)->value = True;
+    wirePin(chip, 11)->value = True;
+    wirePin(chip, 12)->value = True;
+    wirePin(chip, 13)->value = True;
+    wirePin(chip,  9)->value = False;
     cr_assert_eq(chip.compute(14), False, "Channel 7 (A=B=C=1) should read pin 9 = False");
 }
 
 Test(c4512, select_channel_4_c_bit_only) {
     C4512 chip("chip");
-    wirePin(chip, 10)->value = False; // INH inactive
-    wirePin(chip, 15)->value = True;  // EN active
-    wirePin(chip, 11)->value = False; // A=0
-    wirePin(chip, 12)->value = False; // B=0
-    wirePin(chip, 13)->value = True;  // C=1 → channel 4 = dataPins[4] = pin 5
-    wirePin(chip,  5)->value = True;  // data at pin 5
+    wirePin(chip, 10)->value = False;
+    wirePin(chip, 15)->value = True;
+    wirePin(chip, 11)->value = False;
+    wirePin(chip, 12)->value = False;
+    wirePin(chip, 13)->value = True;
+    wirePin(chip,  5)->value = True;
     cr_assert_eq(chip.compute(14), True, "Channel 4 (C=1,B=0,A=0) should read pin 5 = True");
 }
 
-// ===== C4801: write then read path (lines 24, 35-52, 82-99) =====
-
 Test(c4801, write_and_read_memory) {
     C4801 chip("chip");
-    wirePin(chip, 18)->value = True;  // CS active high
-    wirePin(chip, 21)->value = True;  // WE active
-    wirePin(chip, 20)->value = False; // OE inactive during write
-    // Address = 0
+    wirePin(chip, 18)->value = True;
+    wirePin(chip, 21)->value = True;
+    wirePin(chip, 20)->value = False;
     for (auto p : {8u, 7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u})
         wirePin(chip, p)->value = False;
-    // Data = 0xA5 = 1010 0101
-    wirePin(chip,  9)->value = True;  // D0=1
-    wirePin(chip, 10)->value = False; // D1=0
-    wirePin(chip, 11)->value = True;  // D2=1
-    wirePin(chip, 13)->value = False; // D3=0
-    wirePin(chip, 14)->value = False; // D4=0
-    wirePin(chip, 15)->value = True;  // D5=1
-    wirePin(chip, 16)->value = False; // D6=0
-    wirePin(chip, 17)->value = True;  // D7=1
+    wirePin(chip,  9)->value = True;
+    wirePin(chip, 10)->value = False;
+    wirePin(chip, 11)->value = True;
+    wirePin(chip, 13)->value = False;
+    wirePin(chip, 14)->value = False;
+    wirePin(chip, 15)->value = True;
+    wirePin(chip, 16)->value = False;
+    wirePin(chip, 17)->value = True;
 
-    chip.simulate(1); // stores 0xA5 in _nextMemory[0]
-    chip.simulate(2); // flushes _nextMemory to _memory
+    chip.simulate(1);
+    chip.simulate(2);
 
-    wirePin(chip, 21)->value = False; // WE inactive
-    wirePin(chip, 20)->value = True;  // OE active
+    wirePin(chip, 21)->value = False;
+    wirePin(chip, 20)->value = True;
 
     cr_assert_eq(chip.compute(9),  True,  "D0 = bit0 of 0xA5 = 1");
     cr_assert_eq(chip.compute(10), False, "D1 = bit1 of 0xA5 = 0");
@@ -3192,12 +3169,11 @@ Test(c4801, simulate_undefined_address_aborts_write) {
     C4801 chip("chip");
     wirePin(chip, 18)->value = True;
     wirePin(chip, 21)->value = True;
-    wirePin(chip,  8)->value = Undefined; // A0 undefined → abort
+    wirePin(chip,  8)->value = Undefined;
     for (auto p : {7u, 6u, 5u, 4u, 3u, 2u, 1u, 23u, 22u})
         wirePin(chip, p)->value = False;
     chip.simulate(1);
 
-    // Read back: memory should be untouched (0x00)
     wirePin(chip, 21)->value = False;
     wirePin(chip, 20)->value = True;
     wirePin(chip,  8)->value = False;
@@ -3223,8 +3199,6 @@ Test(c4801, write_all_ones_then_read) {
     for (auto p : outPins)
         cr_assert_eq(chip.compute(p), True, "Pin %zu must read True from 0xFF", p);
 }
-
-// ===== Circuit: setInputValue with real Input (lines 133, 135, 139-142) =====
 
 Test(circuit, set_input_value_1_applies_true) {
     Circuit c;
@@ -3257,12 +3231,9 @@ Test(circuit, set_input_value_U_applies_undefined) {
     cr_assert_eq(inp.compute(1), Undefined, "setInputValue('U') should reset to Undefined");
 }
 
-// ===== Parser: invalid link endpoint token (lines 200, 203-209) =====
-
 Test(parser, link_endpoint_starts_with_colon_throws) {
     TestFactory factory;
     Parser parser(factory);
-    // ':' produces a COLON token → triggers error branch in parseEndpoint
     std::istringstream iss(".chipsets:\ninput a\noutput b\n.links:\n:1 b:1\n");
     bool thrown = false;
     try { (void)parser.parse(iss); } catch (const ParseError &) { thrown = true; }
@@ -3272,14 +3243,11 @@ Test(parser, link_endpoint_starts_with_colon_throws) {
 Test(parser, pin_number_overflow_throws) {
     TestFactory factory;
     Parser parser(factory);
-    // Number too large for stoul → triggers catch in parseLinkLine
     std::istringstream iss(".chipsets:\ninput a\noutput b\n.links:\na:99999999999999999999 b:1\n");
     bool thrown = false;
     try { (void)parser.parse(iss); } catch (const ParseError &) { thrown = true; }
     cr_assert(thrown, "Expected ParseError when pin number overflows stoul");
 }
-
-// ===== Shell: cmdSetInput valid path (lines 55-56) =====
 
 Test(shell, cmd_set_input_valid_assignment, .init = cr_redirect_stdout) {
     Circuit c;
