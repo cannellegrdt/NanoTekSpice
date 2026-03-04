@@ -898,6 +898,35 @@ input(s):
 output(s):
 > " 0
 
+cat > "$TMPDIR_NTS/dupli_last_char.nts" << 'EOF'
+.chipsets:
+clock clk
+input i0
+input i1
+input i2
+input i3
+input i4
+input i5
+input i6
+input i7
+input inhib
+logger log
+
+.links:
+clk:1   log:9
+inhib:1 log:10
+i0:1    log:1
+i1:1    log:2
+i2:1    log:3
+i3:1    log:4
+i4:1    log:5
+i5:1    log:6
+i6:1    log:7
+i7:1    log:8
+EOF
+
+run_test "dupli last char" "$TMPDIR_NTS/dupli_last_char.nts" "$(printf 'i0=1\ni1=0\ni2=0\ni3=0\ni4=0\ni5=0\ni6=1\ni7=0\ninhib=0\nclk=0\nsimulate\nclk=1\nsimulate\ni0=0\ni1=1\nclk=0\nsimulate\nclk=1\nsimulate\nexit\n')" "> " 0
+
 rm -f ./log.bin
 
 echo ""
