@@ -50,8 +50,6 @@ namespace nts {
         }
 
         if (pin == 12) {
-            if (getLinkValue(15) == True)
-                return False;
             return (_counter < 5) ? True : False;
         }
 

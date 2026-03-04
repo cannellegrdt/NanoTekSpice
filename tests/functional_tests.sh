@@ -893,7 +893,7 @@ in:1 log:1
 EOF
 run_test "logger instantiation" "$TMPDIR_NTS/logger.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
 input(s):
-  clk: U
+  clk: 0
   in: U
 output(s):
 > " 0

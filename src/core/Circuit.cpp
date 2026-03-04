@@ -11,6 +11,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <set>
 
 #include "nts/AComponent.hpp"
 #include "nts/Errors.hpp"
@@ -65,8 +66,15 @@ void Circuit::addClockName(const std::string &name) {
 
 void Circuit::simulate() {
   _tick++;
+  std::set<std::string> inputSet(_inputNames.begin(), _inputNames.end());
+  for (const auto &name : _inputNames) {
+    auto it = _components.find(name);
+    if (it != _components.end())
+      it->second->simulate(_tick);
+  }
   for (auto &[name, comp] : _components) {
-    comp->simulate(_tick);
+    if (inputSet.find(name) == inputSet.end())
+      comp->simulate(_tick);
   }
 }
 

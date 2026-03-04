@@ -12,6 +12,7 @@ namespace nts {
     Clock::Clock(const std::string &name)
         : Input(name)
     {
+        _nextValue = Tristate::False;
     }
 
     void Clock::simulate(std::size_t tick)
