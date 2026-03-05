@@ -898,6 +898,9 @@ input(s):
 output(s):
 > " 0
 
+
+rm -f ./log.bin
+
 cat > "$TMPDIR_NTS/dupli_last_char.nts" << 'EOF'
 .chipsets:
 clock clk
@@ -925,9 +928,22 @@ i6:1    log:7
 i7:1    log:8
 EOF
 
-run_test "dupli last char" "$TMPDIR_NTS/dupli_last_char.nts" "$(printf 'i0=1\ni1=0\ni2=0\ni3=0\ni4=0\ni5=0\ni6=1\ni7=0\ninhib=0\nclk=0\nsimulate\nclk=1\nsimulate\ni0=0\ni1=1\nclk=0\nsimulate\nclk=1\nsimulate\nexit\n')" "> " 0
-
 rm -f ./log.bin
+printf 'i0=1\ni1=0\ni2=0\ni3=0\ni4=0\ni5=0\ni6=1\ni7=0\ninhib=0\nclk=0\nsimulate\nclk=1\nsimulate\ni0=0\ni1=1\nclk=0\nsimulate\nclk=1\nsimulate\nexit\n' | "$BIN" "$TMPDIR_NTS/dupli_last_char.nts" >/dev/null 2>/dev/null
+actual_size=$(wc -c < ./log.bin 2>/dev/null || echo 0)
+actual_hex=$(xxd -p ./log.bin 2>/dev/null || echo "")
+expected_hex="4142"
+if [ "$actual_size" -eq 2 ] && [ "$actual_hex" = "$expected_hex" ]; then
+    echo -e "  ${GREEN}[PASS]${NC} dupli last char"
+    PASS=$((PASS + 1))
+else
+    echo -e "  ${RED}[FAIL]${NC} dupli last char"
+    echo "         expected log.bin: 2 bytes (4142 = 'AB')"
+    echo "         got log.bin: $actual_size bytes ($actual_hex)"
+    FAIL=$((FAIL + 1))
+fi
+rm -f ./log.bin
+
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

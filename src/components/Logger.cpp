@@ -14,7 +14,7 @@ namespace nts {
         : _lastClock(Tristate::Undefined)
     {
         _name = name;
-        _fileStream.open("./log.bin", std::ios::binary | std::ios::app);
+        _fileStream.open("./log.bin", std::ios::binary | std::ios::trunc);
         if (!_fileStream.is_open()) throw NtsException("Logger: cannot open log file './log.bin'");
     }
 
