@@ -9,20 +9,17 @@
 
 namespace nts {
 
-    Clock::Clock(const std::string &name)
-        : Input(name)
-    {
-        _nextValue = Tristate::False;
-    }
-
-    void Clock::simulate(std::size_t tick)
-    {
-        Input::simulate(tick);
-
-        if (_nextValue == Tristate::True)
-            _nextValue = Tristate::False;
-        else if (_nextValue == Tristate::False)
-            _nextValue = Tristate::True;
-    }
-
+Clock::Clock(const std::string &name) : Input(name) {
+  _nextValue = Tristate::Undefined;
 }
+
+void Clock::simulate(std::size_t tick) {
+  Input::simulate(tick);
+
+  if (_nextValue == Tristate::True)
+    _nextValue = Tristate::False;
+  else if (_nextValue == Tristate::False)
+    _nextValue = Tristate::True;
+}
+
+} // namespace nts

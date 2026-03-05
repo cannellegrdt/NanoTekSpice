@@ -788,7 +788,7 @@ EOF
 run_test "4013 (dual flip-flop) instantiation" "$TMPDIR_NTS/4013.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
 input(s):
 output(s):
-  out: U
+  out: 0
 > " 0
 
 cat > "$TMPDIR_NTS/4017.nts" << 'EOF'
@@ -801,7 +801,7 @@ EOF
 run_test "4017 (Johnson counter) instantiation" "$TMPDIR_NTS/4017.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
 input(s):
 output(s):
-  out: 1
+  out: 0
 > " 0
 
 cat > "$TMPDIR_NTS/4040.nts" << 'EOF'
@@ -893,7 +893,7 @@ in:1 log:1
 EOF
 run_test "logger instantiation" "$TMPDIR_NTS/logger.nts" "$(printf 'simulate\ndisplay\nexit\n')" "> > tick: 1
 input(s):
-  clk: 0
+  clk: U
   in: U
 output(s):
 > " 0
