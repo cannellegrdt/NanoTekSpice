@@ -9,7 +9,18 @@
 
 cd "$(dirname "$0")/.." || exit 1
 
-BIN="./nanotekspice"
+USE_VALGRIND=0
+for arg in "$@"; do
+    [ "$arg" = "--valgrind" ] && USE_VALGRIND=1
+done
+
+if [ "$USE_VALGRIND" -eq 1 ]; then
+    VALGRIND_LOGDIR=$(mktemp -d)
+    BIN=(valgrind --leak-check=full --error-exitcode=1 --log-file="$VALGRIND_LOGDIR/vg_%p.log" ./nanotekspice)
+else
+    VALGRIND_LOGDIR=""
+    BIN=(./nanotekspice)
+fi
 NTS_S="./nts_single"
 NTS_A="./nts_advanced"
 TMPDIR_NTS=$(mktemp -d)
@@ -23,12 +34,13 @@ NC='\033[0m'
 
 PASS=0
 FAIL=0
+VALGRIND_ERRORS=0
 
-cleanup() { rm -rf "$TMPDIR_NTS"; }
+cleanup() { rm -rf "$TMPDIR_NTS" ${VALGRIND_LOGDIR:+"$VALGRIND_LOGDIR"}; }
 trap cleanup EXIT
 
-if [ ! -x "$BIN" ]; then
-    echo -e "${RED}[ERREUR]${NC} Binary '$BIN' not found."
+if [ ! -x "${BIN[-1]}" ]; then
+    echo -e "${RED}[ERREUR]${NC} Binary '${BIN[-1]}' not found."
     echo "  Run 'make' before executing the tests."
     exit 1
 fi
@@ -42,12 +54,24 @@ done
 
 normalize() { sed 's/[[:space:]]*$//'; }
 
+check_latest_valgrind() {
+    [ "$USE_VALGRIND" -eq 0 ] && return
+    local latest
+    latest=$(ls -t "$VALGRIND_LOGDIR"/vg_*.log 2>/dev/null | head -1)
+    [ -f "$latest" ] || return
+    if grep -qE "ERROR SUMMARY: [1-9]|definitely lost: [1-9]|Invalid (read|write)|Uninitialised" "$latest"; then
+        grep -E "ERROR SUMMARY|definitely lost|indirectly lost|possibly lost|Invalid|Uninitialised" "$latest" \
+            | sed 's/^/         [valgrind] /' || true
+        VALGRIND_ERRORS=$((VALGRIND_ERRORS + 1))
+    fi
+}
+
 run_test() {
     local name="$1" nts_file="$2" input_cmds="$3" expected_out="$4"
     local expected_exit="${5:-0}"
 
     local actual_out actual_exit
-    actual_out=$(printf '%s' "$input_cmds" | "$BIN" "$nts_file" 2>/dev/null)
+    actual_out=$(printf '%s' "$input_cmds" | "${BIN[@]}" "$nts_file" 2>/dev/null)
     actual_exit=$?
 
     local norm_actual norm_expected
@@ -74,6 +98,7 @@ run_test() {
         fi
         FAIL=$((FAIL + 1))
     fi
+    check_latest_valgrind
 }
 
 run_error_test() {
@@ -82,10 +107,10 @@ run_error_test() {
 
     local actual_exit actual_stderr
     if [ -z "$nts_file" ] || [ "$nts_file" = "-" ]; then
-        printf '%s' "$input_cmds" | "$BIN" >/dev/null 2>/tmp/nts_stderr_$$
+        printf '%s' "$input_cmds" | "${BIN[@]}" >/dev/null 2>/tmp/nts_stderr_$$
         actual_exit=$?
     else
-        printf '%s' "$input_cmds" | "$BIN" "$nts_file" >/dev/null 2>/tmp/nts_stderr_$$
+        printf '%s' "$input_cmds" | "${BIN[@]}" "$nts_file" >/dev/null 2>/tmp/nts_stderr_$$
         actual_exit=$?
     fi
     actual_stderr=$(cat /tmp/nts_stderr_$$ 2>/dev/null)
@@ -108,6 +133,7 @@ run_error_test() {
         fi
         FAIL=$((FAIL + 1))
     fi
+    check_latest_valgrind
 }
 
 section() {
@@ -171,7 +197,7 @@ run_error_test "Duplicate name → exit 84" "$TMPDIR_NTS/duplicate.nts" "" 84
 run_error_test "No .chipsets section → exit 84" "$TMPDIR_NTS/no_chipsets.nts" "" 84
 
 if [ -f "$NTS_S/input_output.nts" ]; then
-    actual_stdout=$(printf 'unknowncommand\nexit\n' | "$BIN" "$NTS_S/input_output.nts" 2>/dev/null)
+    actual_stdout=$(printf 'unknowncommand\nexit\n' | "${BIN[@]}" "$NTS_S/input_output.nts" 2>/dev/null)
     actual_exit=$?
     if echo "$actual_stdout" | grep -qi "error\|erreur\|unknown\|inconnu" 2>/dev/null; then
         echo -e "  ${RED}[FAIL]${NC} Runtime error → on stderr (not stdout)"
@@ -181,13 +207,14 @@ if [ -f "$NTS_S/input_output.nts" ]; then
         echo -e "  ${GREEN}[PASS]${NC} Runtime error → on stderr (not stdout)"
         PASS=$((PASS + 1))
     fi
+    check_latest_valgrind
 fi
 
 
 section "2. Session (prompt, EOF, exit)"
 
 if [ -f "$NTS_S/input_output.nts" ]; then
-    actual=$(printf 'exit\n' | "$BIN" "$NTS_S/input_output.nts" 2>/dev/null)
+    actual=$(printf 'exit\n' | "${BIN[@]}" "$NTS_S/input_output.nts" 2>/dev/null)
     if printf '%s' "$actual" | grep -q "^> "; then
         echo -e "  ${GREEN}[PASS]${NC} Prompt '> ' present before each command"
         PASS=$((PASS + 1))
@@ -196,10 +223,11 @@ if [ -f "$NTS_S/input_output.nts" ]; then
         echo "         stdout received: $(printf '%s' "$actual" | head -1 | cat -A)"
         FAIL=$((FAIL + 1))
     fi
+    check_latest_valgrind
 fi
 
 if [ -f "$NTS_S/input_output.nts" ]; then
-    printf 'exit\n' | "$BIN" "$NTS_S/input_output.nts" >/dev/null 2>/dev/null
+    printf 'exit\n' | "${BIN[@]}" "$NTS_S/input_output.nts" >/dev/null 2>/dev/null
     ec=$?
     if [ "$ec" -eq 0 ]; then
         echo -e "  ${GREEN}[PASS]${NC} Command 'exit' → exit 0"
@@ -208,10 +236,11 @@ if [ -f "$NTS_S/input_output.nts" ]; then
         echo -e "  ${RED}[FAIL]${NC} Command 'exit' → exit 0 (got: $ec)"
         FAIL=$((FAIL + 1))
     fi
+    check_latest_valgrind
 fi
 
 if [ -f "$NTS_S/input_output.nts" ]; then
-    printf '' | "$BIN" "$NTS_S/input_output.nts" >/dev/null 2>/dev/null
+    printf '' | "${BIN[@]}" "$NTS_S/input_output.nts" >/dev/null 2>/dev/null
     ec=$?
     if [ "$ec" -eq 0 ]; then
         echo -e "  ${GREEN}[PASS]${NC} EOF (CTRL+D) → exit 0"
@@ -220,6 +249,7 @@ if [ -f "$NTS_S/input_output.nts" ]; then
         echo -e "  ${RED}[FAIL]${NC} EOF (CTRL+D) → exit 0 (got: $ec)"
         FAIL=$((FAIL + 1))
     fi
+    check_latest_valgrind
 fi
 
 run_test "Subject example 1: OR gate (a=1, b=0 → s=1)" \
@@ -929,7 +959,8 @@ i7:1    log:8
 EOF
 
 rm -f ./log.bin
-printf 'i0=1\ni1=0\ni2=0\ni3=0\ni4=0\ni5=0\ni6=1\ni7=0\ninhib=0\nclk=0\nsimulate\nclk=1\nsimulate\ni0=0\ni1=1\nclk=0\nsimulate\nclk=1\nsimulate\nexit\n' | "$BIN" "$TMPDIR_NTS/dupli_last_char.nts" >/dev/null 2>/dev/null
+printf 'i0=1\ni1=0\ni2=0\ni3=0\ni4=0\ni5=0\ni6=1\ni7=0\ninhib=0\nclk=0\nsimulate\nclk=1\nsimulate\ni0=0\ni1=1\nclk=0\nsimulate\nclk=1\nsimulate\nexit\n' | "${BIN[@]}" "$TMPDIR_NTS/dupli_last_char.nts" >/dev/null 2>/dev/null
+check_latest_valgrind
 actual_size=$(wc -c < ./log.bin 2>/dev/null || echo 0)
 actual_hex=$(xxd -p ./log.bin 2>/dev/null || echo "")
 expected_hex="4142"
@@ -950,6 +981,10 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 total=$((PASS + FAIL))
 echo -e "  Results: ${GREEN}${BOLD}$PASS passed${NC} / $total tests"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+if [ "$USE_VALGRIND" -eq 1 ] && [ "$VALGRIND_ERRORS" -eq 0 ]; then
+    echo -e "  ${GREEN}Valgrind: no memory errors detected${NC}"
+fi
 
 if [ "$FAIL" -gt 0 ]; then
     exit 1

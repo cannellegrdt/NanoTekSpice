@@ -6,7 +6,7 @@
 ##
 
 CC          =   clang++
-CXXFLAGS    =   -Wall -Wextra -Werror -Wunused-private-field -std=c++20
+CXXFLAGS    =   -Wall -Wextra -Werror -Wunused-private-field -std=c++20 -g
 COMMON_INC  =   -I./include
 
 NAME        =   nanotekspice
@@ -33,16 +33,13 @@ all:	$(NAME)
 $(NAME):	$(OBJ)
 	$(CC) $(CXXFLAGS) -o $(NAME) $(OBJ) $(COMMON_INC)
 
-
 turing:	$(TURING_NAME)
 $(TURING_NAME):	$(CORE_OBJ) $(TURING_OBJ)
 	$(CC) $(CXXFLAGS) -o $(TURING_NAME) $^ $(COMMON_INC) $(TURING_INC)
 
-
 gui:	$(GUI_NAME)
 $(GUI_NAME):	$(CORE_OBJ) $(GUI_OBJ)
 	$(CC) $(CXXFLAGS) -o $(GUI_NAME) $^ $(GUI_LIBS) $(COMMON_INC) $(GUI_INC)
-
 
 src/%.o:	src/%.cpp
 	$(CC) $(CXXFLAGS) -c $< -o $@ $(COMMON_INC)
@@ -68,6 +65,9 @@ unit_tests:	fclean
 functional_tests:	all
 	./tests/functional_tests.sh
 
+valgrind_func_tests:	all
+	./tests/functional_tests.sh --valgrind
+
 tests_run:	unit_tests
 	$(MAKE) functional_tests
 
@@ -77,7 +77,7 @@ coverage:	unit_tests
 lint:
 	cppcheck --enable=warning,performance,portability --error-exitcode=1 -I include/ src/
 
-memcheck:	unit_tests
+memcheck:	unit_tests valgrind_func_tests
 	valgrind --leak-check=full --soname-synonyms=somalloc=none ./unit_tests
 
 clean:
@@ -92,4 +92,4 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re bonus turing gui unit_tests tests_run coverage lint memcheck functional_tests
+.PHONY: all clean fclean re bonus turing gui unit_tests tests_run coverage lint memcheck functional_tests valgrind_func_tests
