@@ -45,9 +45,11 @@
 
 # my files
 *.pdf
+!documentation/*.pdf
 todo.md
 nanotekspice
 *.txt
+!subject_sample/*.txt
 *.gcda
 *.gcno
 unit_tests
