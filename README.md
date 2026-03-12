@@ -1,11 +1,38 @@
 # NanoTekSpice
 
-> Digital circuit simulator based on three-state Boolean logic — EPITECH G-OOP-400 Project
+> Digital circuit simulator based on three-state Boolean logic - EPITECH G-OOP-400 Project
 
 ---
 
 ## Table of contents
-...
+1. [Overview](#overview)
+2. [Compilation](#compilation)
+3. [Usage](#usage)
+4. [The .nts configuration file](#the-nts-configuration-file)
+    a) [Section .chipsets:](#section-chipsets)
+    b) [Section .links:](#section-links)
+    c) [Syntax rules](#syntax-rules)
+    d) [Complete example](#complete-example)
+5. [Interactive shell](#interactive-shell)
+    a) [Session example](#session-example)
+    b) [Display format (display)](#display-format-display)
+6. [Available components](#available-components)
+    a) [Special components](#special-components)
+    b) [Elementary gates](#elementary-gates)
+    c) [Multi-gate chipsets](#multi-gate-chipsets)
+    d) [Advanced components](#advanced-components)
+7. [Tristate logic](#tristate-logic)
+8. [Project architecture](#project-architecture)
+    a) [Class hierarchy](#class-hierarchy)
+9. [Bonus - Turing machine](#bonus--turing-machine)
+    a) [Standalone simulator](#standalone-simulator)
+    b) [The .tm program file](#the-tm-program-file)
+    c) [TuringMachine component](#turingmachine-nanotekspice-component)
+10. [Bonus - GUI](#bonus--gui)
+    a) [Usage](#usage-1)
+    b) [Keyboard controls](#keyboard-controls)
+    c) [The .graphtc: section](#the-graphtc-section)
+    d) [GUI-exclusive components](#gui-exclusive-components)
 
 ---
 
@@ -14,6 +41,21 @@
 **NanoTekSpice** is a digital circuit simulator. From a `.nts` configuration file describing a circuit (components and connections), it builds a component graph, injects values, and simulates the behavior tick by tick.
 
 Components are either real digital chipsets (4081, 4013, 4040…) or logical inputs/outputs. All signals rely on **three-state logic**: `0` (False), `1` (True), and `U` (Undefined).
+
+---
+
+## Screenshots
+
+### Interactive shell
+
+![Shell demo](assets/demo_shell.gif)
+
+### GUI (SFML)
+Example with [test_gui.nts](bonus/examples/test_gui.nts)
+![GUI screenshot](assets/demo_gui_simple.png)
+
+Example with [complex_gui.nts](bonus/examples/complex_gui.nts)
+![GUI screenshot2](assets/demo_gui_complex.png)
 
 ---
 
@@ -217,7 +259,7 @@ These chipsets contain multiple gates in a single package (pins 7 and 14 are pow
 
 ### Advanced components
 
-#### `4008` — 4-bit Full Adder (16 pins)
+#### `4008` - 4-bit Full Adder (16 pins)
 
 Adds two 4-bit numbers with carry.
 
@@ -229,7 +271,7 @@ Adds two 4-bit numbers with carry.
 | 10, 11, 12, 13 | Sum0–Sum3 (result) |
 | 14 | Cout (Carry out) |
 
-#### `4013` — Dual D-Type Flip-Flop (14 pins)
+#### `4013` - Dual D-Type Flip-Flop (14 pins)
 
 Two independent D flip-flops, triggered on the rising edge.
 
@@ -240,7 +282,7 @@ Two independent D flip-flops, triggered on the rising edge.
 
 * Asynchronous Set and Reset, active High.
 
-#### `4017` — Johnson Decade Counter (16 pins)
+#### `4017` - Johnson Decade Counter (16 pins)
 
 Counts cyclically from 0 to 9, one active output at a time.
 
@@ -252,7 +294,7 @@ Counts cyclically from 0 to 9, one active output at a time.
 | 3,2,4,7,10,1,5,6,9,11 | Q0–Q9 (decoded outputs) |
 | 12 | Carry Out (pulse when Q9→Q0) |
 
-#### `4040` — 12-bit Binary Counter (16 pins)
+#### `4040` - 12-bit Binary Counter (16 pins)
 
 Counts on the **falling edge** of the CLK.
 
@@ -262,7 +304,7 @@ Counts on the **falling edge** of the CLK.
 | 11 | Reset |
 | 9,7,6,5,3,2,4,13,12,14,15,1 | Q0–Q11 (output bits) |
 
-#### `4094` — 8-bit Shift Register (16 pins)
+#### `4094` - 8-bit Shift Register (16 pins)
 
 Serial-to-parallel shift on rising edge.
 
@@ -275,7 +317,7 @@ Serial-to-parallel shift on rising edge.
 | 4–7, 14–11 | Q0–Q7 (parallel outputs) |
 | 9, 10 | Qs, Qe (serial outputs) |
 
-#### `4512` — 8-channel Multiplexer (16 pins)
+#### `4512` - 8-channel Multiplexer (16 pins)
 
 Selects one of 8 channels.
 
@@ -287,7 +329,7 @@ Selects one of 8 channels.
 | 15 | Enable |
 | 14 | Z (output) |
 
-#### `4514` — 4-to-16 Line Decoder (24 pins)
+#### `4514` - 4-to-16 Line Decoder (24 pins)
 
 Activates one of 16 outputs based on a 4-bit address.
 
@@ -298,7 +340,7 @@ Activates one of 16 outputs based on a 4-bit address.
 | 23 | Inhibit |
 | 4–20 | Y0–Y15 (outputs, one active at a time) |
 
-#### `4801` — 1024×8 Static RAM (24 pins)
+#### `4801` - 1024×8 Static RAM (24 pins)
 
 1 KB (1024 bytes) memory, read/write.
 
@@ -313,7 +355,7 @@ Activates one of 16 outputs based on a 4-bit address.
 * Read: CE and OE high.
 * Write: CE and WE high.
 
-#### `2716` — 2048×8 EPROM/ROM (24 pins)
+#### `2716` - 2048×8 EPROM/ROM (24 pins)
 
 2 KB read-only memory, initialized from the `./rom.bin` file at startup.
 
@@ -424,217 +466,145 @@ classDiagram
             True = 1
         }
 
+        class TristateLogic {
+            <<static helper>>
+            +andGate(Tristate a, Tristate b)$ Tristate
+            +orGate(Tristate a, Tristate b)$ Tristate
+            +notGate(Tristate a)$ Tristate
+            +... ()$ Tristate
+        }
+
         class IComponent {
             <<interface>>
-            +~IComponent()* = default
-            +simulate(std::size_t tick)* void
-            +compute(std::size_t pin)* Tristate
-            +setLink(std::size_t pin, IComponent &other, std::size_t otherPin)* void
+            +~IComponent()*
+            +simulate(size_t tick)* void
+            +compute(size_t pin)* Tristate
+            +setLink(size_t pin, IComponent &other, size_t otherPin)* void
         }
     }
 
     class AComponent {
         <<abstract>>
-        #_name : std::string
-        #_links : std::map~size_t, pair~IComponent*, size_t~~
-        #_computing : bool
-        +getName() std::string
-        +setName(std::string name) void
+        #_name : string
+        #_tick : size_t
+        #_lastComputedTick : size_t
+        #_links : map~size_t, pair~IComponent*, size_t~~
+        #_pins : map~size_t, Tristate~
+        +getName() string
+        +compute(size_t pin) Tristate
         +setLink(size_t pin, IComponent &other, size_t otherPin) void
         #getLink(size_t pin) Tristate
     }
 
     IComponent <|-- AComponent
+    AComponent ..> TristateLogic : utilise
+
+    %% ===== PARSING =====
+    class Lexer {
+        -_content : string
+        -_cursor : size_t
+        +peek() Token
+        +advance() Token
+    }
+
+    class Parser {
+        -_lexer : Lexer
+        -_factory : Factory
+        +parseFile(string file, Circuit &circuit) void
+    }
+
+    Parser --> Lexer : possède
+
+    %% ===== SIMULATION ENGINE =====
+    class Factory {
+        +createComponent(string type, string name) unique_ptr~IComponent~
+    }
+
+    class Circuit {
+        -_componentsByName : map~string, IComponent*~
+        -_tick : size_t
+        +addComponent(unique_ptr~IComponent~ comp) void
+        +simulate() void
+        +display() void
+        +setInputValue(string name, string value) void
+    }
+
+    class Shell {
+        -_circuit : Circuit
+        +run(int ac, char **av) void
+    }
+
+    Shell --> Parser : utilise pour init
+    Shell --> Circuit : pilote
+    Parser --> Factory : utilise
+    Factory ..> IComponent : fabrique
+    Circuit *-- IComponent : possède
 
     %% ===== SPECIAL COMPONENTS =====
     class Input {
-        -_value : Tristate
-        +setValue(Tristate v) void
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
+        -_nextValue : Tristate
+        +setValue(Tristate) void
     }
-
     class Clock {
         +simulate(size_t tick) void
     }
-
-    class Output {
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
-
-    class TrueComp {
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
-
-    class FalseComp {
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
+    class Output { }
+    %% ... TrueComp, FalseComp
 
     AComponent <|-- Input
     AComponent <|-- Output
-    AComponent <|-- TrueComp
-    AComponent <|-- FalseComp
     Input <|-- Clock
 
     %% ===== ELEMENTARY GATES =====
-    class AndGate {
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
-    class OrGate {
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
-    class XorGate {
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
-    class NotGate {
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
+    class AndGate { }
+    class OrGate { }
+    %% ... XorGate, NotGate, NandGate, NorGate
 
     AComponent <|-- AndGate
     AComponent <|-- OrGate
-    AComponent <|-- XorGate
-    AComponent <|-- NotGate
 
-    %% ===== GATE CHIPSETS (composition) =====
+    %% ===== GATE CHIPSETS =====
     class AGateComponent {
         <<abstract>>
-        #_gates : std::vector~std::unique_ptr~IComponent~~
+        #_gates : vector~unique_ptr~IComponent~~
         #mapPinToGate(size_t pin) pair~IComponent*, size_t~
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-        +setLink(size_t pin, IComponent &other, size_t otherPin) void
     }
+
+    class C4011 { %% Quad NAND }
+    class C4081 { %% Quad AND }
+    %% ... C4001, C4030, C4069, C4071
 
     AComponent <|-- AGateComponent
-
-    class C4001 { }
-    class C4011 { }
-    class C4030 { }
-    class C4069 { }
-    class C4071 { }
-    class C4081 { }
-
-    AGateComponent <|-- C4001
     AGateComponent <|-- C4011
-    AGateComponent <|-- C4030
-    AGateComponent <|-- C4069
-    AGateComponent <|-- C4071
     AGateComponent <|-- C4081
 
-    AGateComponent o-- IComponent : _gates (composition interne)
-
     %% ===== ADVANCED COMPONENTS =====
-    class C4008 {
-        -_carry : Tristate
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
     class C4013 {
         -_q1 : Tristate
+        -_q1_next : Tristate
         -_q2 : Tristate
-        -_lastClock1 : Tristate
-        -_lastClock2 : Tristate
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
-    class C4017 {
-        -_counter : int
-        -_lastClock : Tristate
-        +compute(size_t pin) Tristate
+        -_q2_next : Tristate
         +simulate(size_t tick) void
     }
     class C4040 {
         -_counter : int
-        -_lastClock : Tristate
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
-    class C4094 {
-        -_register : std::array~Tristate, 8~
-        -_lastClock : Tristate
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
-    class C4512 {
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
-    class C4514 {
-        -_latch : int
-        -_lastStrobe : Tristate
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
-    class C4801 {
-        -_memory : std::array~uint8_t, 1024~
-        +compute(size_t pin) Tristate
-        +simulate(size_t tick) void
-    }
-    class C2716 {
-        -_rom : std::array~uint8_t, 2048~
-        +compute(size_t pin) Tristate
+        -_counter_next : int
         +simulate(size_t tick) void
     }
     class Logger {
-        -_lastClock : Tristate
-        +compute(size_t pin) Tristate
+        -_fileStream : ofstream
         +simulate(size_t tick) void
     }
+    %% ... C4008, C4017, C4094, C4512, C4514, C4801, C2716
 
-    AComponent <|-- C4008
     AComponent <|-- C4013
-    AComponent <|-- C4017
     AComponent <|-- C4040
-    AComponent <|-- C4094
-    AComponent <|-- C4512
-    AComponent <|-- C4514
-    AComponent <|-- C4801
-    AComponent <|-- C2716
     AComponent <|-- Logger
-
-    %% ===== SYSTEM CLASSES =====
-    class Factory {
-        -_creators : std::map~string, function~
-        +createComponent(const string &type) unique_ptr~IComponent~
-    }
-
-    class Parser {
-        -_factory : Factory
-        +parse(const string &filepath) Circuit
-        -parseChipsets(ifstream &file, Circuit &circuit) void
-        -parseLinks(ifstream &file, Circuit &circuit) void
-        -parseLine(const string &line) void
-    }
-
-    class Circuit {
-        -_components : std::map~string, unique_ptr~IComponent~~
-        -_inputs : std::vector~pair~string, Input*~~
-        -_outputs : std::vector~pair~string, Output*~~
-        -_tick : size_t
-        +addComponent(string name, unique_ptr~IComponent~ comp) void
-        +simulate() void
-        +display() void
-        +loop() void
-        +setInputValue(string name, Tristate val) void
-        +run() void
-    }
-
-    Parser --> Factory : utilise
-    Parser --> Circuit : construit
-    Circuit o-- IComponent : _components
-    Factory ..> IComponent : cree
 ```
 
 ---
 
-## Bonus — Turing machine
+## Bonus - Turing machine
 
 The Turing machine bonus adds a **standalone simulator** and a **NanoTekSpice component** (`TuringMachine`) that models a deterministic single-tape Turing machine.
 
@@ -675,7 +645,7 @@ transitions:
 <state>  <read>  <next_state>  <write>  <direction (L/R)>
 ```
 
-**Example — binary increment (`increment.tm`):**
+**Example - binary increment (`increment.tm`):**
 
 ```
 states:    q_right q_carry q_accept
@@ -698,7 +668,7 @@ q_carry  _  q_accept  1  R
 | File | Description |
 | --- | --- |
 | `increment.tm` | Increments a binary number on the tape |
-| `bb3.tm` | 3-state Busy Beaver — writes 6 ones and halts in 14 steps |
+| `bb3.tm` | 3-state Busy Beaver - writes 6 ones and halts in 14 steps |
 | `palindrome.tm` | Accepts words over `{a, b}` that are palindromes |
 
 ### `TuringMachine` NanoTekSpice component
@@ -707,14 +677,14 @@ The Turing machine can also be instantiated as a component inside a `.nts` circu
 
 | Pin | Direction | Description |
 | --- | --- | --- |
-| 1 | IN | CLK — rising edge triggers one step |
-| 2 | IN | RST — high level resets the machine |
-| 3 | OUT | HALT — `1` when the machine has stopped |
-| 4 | OUT | ACCEPT — `1` when halted in an accepting state |
-| 5–12 | OUT | STATE[0..7] — current state index (binary, LSB=5) |
-| 13–20 | OUT | SYMBOL[0..7] — ASCII value of current tape symbol (LSB=13) |
-| 21 | OUT | HEAD_SIGN — `0` if head ≥ 0, `1` if head < 0 |
-| 22–29 | OUT | HEAD_POS[0..7] — absolute head position (LSB=22) |
+| 1 | IN | CLK - rising edge triggers one step |
+| 2 | IN | RST - high level resets the machine |
+| 3 | OUT | HALT - `1` when the machine has stopped |
+| 4 | OUT | ACCEPT - `1` when halted in an accepting state |
+| 5–12 | OUT | STATE[0..7] - current state index (binary, LSB=5) |
+| 13–20 | OUT | SYMBOL[0..7] - ASCII value of current tape symbol (LSB=13) |
+| 21 | OUT | HEAD_SIGN - `0` if head ≥ 0, `1` if head < 0 |
+| 22–29 | OUT | HEAD_POS[0..7] - absolute head position (LSB=22) |
 
 ### Architecture
 
@@ -737,7 +707,7 @@ bonus/
 
 ---
 
-## Bonus — GUI
+## Bonus - GUI
 
 The GUI bonus replaces the text shell with an **SFML graphical window** that renders the circuit in real time.
 
