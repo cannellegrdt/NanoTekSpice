@@ -1,6 +1,8 @@
 name: nanotekspice CI
 
 on:
+  push:
+    branches: ["main"]
   pull_request:
     branches: ["*"]
 
@@ -9,7 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang
+
       - name: Build project
         run: make
 
