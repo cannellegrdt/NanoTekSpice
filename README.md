@@ -42,6 +42,8 @@
 
 Components are either real digital chipsets (4081, 4013, 4040…) or logical inputs/outputs. All signals rely on **three-state logic**: `0` (False), `1` (True), and `U` (Undefined).
 
+Subject is in [G-OOP-400_nanotekspice.pdf](G-OOP-400_nanotekspice.pdf) file.
+
 ---
 
 ## Screenshots

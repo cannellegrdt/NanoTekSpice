@@ -46,6 +46,7 @@
 # my files
 *.pdf
 !documentation/*.pdf
+!G-OOP-400_nanotekspice.pdf
 todo.md
 nanotekspice
 *.txt
